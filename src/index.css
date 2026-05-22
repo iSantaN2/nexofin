@@ -1,0 +1,136 @@
+﻿@import "tailwindcss";
+
+:root {
+  --nexo-navy: #0a2b6e;
+  --nexo-blue: #1f67ff;
+  --nexo-cyan: #19b9c7;
+  --nexo-teal: #11c69a;
+  --nexo-soft: #eef5ff;
+  --nexo-soft-2: #ebfbf7;
+}
+
+body {
+  @apply text-slate-800 font-[Inter] antialiased;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4fbf9 100%);
+}
+
+#root {
+  @apply min-h-screen flex flex-col;
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-sm p-5 border border-gray-100 transition-all hover:shadow-md;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 font-medium transition-all rounded-xl;
+}
+
+.btn-primary {
+  @apply text-white px-4 py-2;
+  background: linear-gradient(135deg, var(--nexo-blue), var(--nexo-teal));
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2;
+}
+
+h1,
+h2,
+h3 {
+  @apply font-semibold text-gray-900;
+}
+
+input,
+select {
+  @apply border border-gray-300 rounded-xl px-3 py-2 w-full outline-none focus:ring-2;
+  --tw-ring-color: #69d8c4;
+}
+
+.icon-bubble {
+  @apply w-10 h-10 flex items-center justify-center rounded-xl text-white;
+}
+
+.react-calendar {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block;
+  margin-inline: auto;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+}
+
+.react-calendar__tile--active {
+  background-color: var(--nexo-blue) !important;
+  color: white !important;
+  border-radius: 12px;
+  animation: bounceIn 0.25s ease;
+  box-shadow: 0 0 0 3px #19b9c74d;
+}
+
+.react-calendar__tile {
+  border-radius: 10px;
+  transition: all 0.25s ease;
+}
+
+.react-calendar__month-view__days__day--weekend {
+  color: #ef4444;
+}
+
+.react-calendar__navigation button {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.react-calendar__tile--now {
+  position: relative;
+  background: var(--nexo-soft-2) !important;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.react-calendar__tile:hover {
+  background-color: var(--nexo-soft);
+  transform: scale(1.05);
+}
+
+.react-calendar__tile--now::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(25, 185, 199, 0.2) 0%, transparent 70%);
+  animation: pulseGlow 2.5s infinite;
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulseGlow {
+  0% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+
+button:hover svg {
+  transform: rotate(-10deg);
+  transition: transform 0.2s ease;
+}

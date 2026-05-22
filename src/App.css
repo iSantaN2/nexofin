@@ -1,0 +1,30 @@
+/* === App.css === */
+
+/* Contenedor principal */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9fafb; /* gris claro */
+  color: #1e293b; /* slate-800 */
+}
+
+/* Animación opcional del logo (puedes quitar si no lo usas) */
+.logo {
+  height: 5rem;
+  padding: 1rem;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 1rem #1f67ff88);
+}
+
+/* Tarjetas globales */
+.card {
+  @apply bg-white rounded-2xl shadow-sm p-6 border border-gray-200;
+}
+
+/* Centrado de texto solo si lo necesitas */
+.text-center {
+  text-align: center;
+}

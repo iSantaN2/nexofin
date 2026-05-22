@@ -1,0 +1,42 @@
+name: NexoFin CI
+
+on:
+  push:
+    branches: ["main", "master", "develop"]
+  pull_request:
+    branches: ["main", "master", "develop"]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_REGISTER_ENABLED: ${{ secrets.E2E_REGISTER_ENABLED }}
+          E2E_REGISTER_PASSWORD: ${{ secrets.E2E_REGISTER_PASSWORD }}
+          E2E_REGISTER_DOMAIN: ${{ secrets.E2E_REGISTER_DOMAIN }}
+        run: npm run e2e

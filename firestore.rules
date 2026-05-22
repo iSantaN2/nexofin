@@ -1,0 +1,138 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function nonEmptyString(value, maxLen) {
+      return value is string && value.size() > 0 && value.size() <= maxLen;
+    }
+
+    function optionalString(value, maxLen) {
+      return value == null || (value is string && value.size() <= maxLen);
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isOwnerFromResource() {
+      return isOwner(resource.data.uid);
+    }
+
+    function isOwnerFromRequest() {
+      return isOwner(request.resource.data.uid);
+    }
+
+    function isOwnerUpdate() {
+      return isOwnerFromResource() && request.resource.data.uid == resource.data.uid;
+    }
+
+    function validUserDoc() {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'currency',
+          'onboardingCompleted',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        request.resource.data.uid == request.auth.uid &&
+        nonEmptyString(request.resource.data.email, 160) &&
+        optionalString(request.resource.data.displayName, 80) &&
+        optionalString(request.resource.data.currency, 8) &&
+        (
+          !('onboardingCompleted' in request.resource.data) ||
+          request.resource.data.onboardingCompleted is bool
+        );
+    }
+
+    function validTransactionDoc() {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'category',
+          'account',
+          'amount',
+          'date',
+          'createdAt',
+          'type',
+          'notes'
+        ]) &&
+        request.resource.data.uid == request.auth.uid &&
+        nonEmptyString(request.resource.data.category, 80) &&
+        nonEmptyString(request.resource.data.account, 80) &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0 &&
+        request.resource.data.amount < 1000000000 &&
+        request.resource.data.type in ['Ingreso', 'Gasto'] &&
+        nonEmptyString(request.resource.data.date, 40) &&
+        nonEmptyString(request.resource.data.createdAt, 40) &&
+        optionalString(request.resource.data.notes, 500);
+    }
+
+    function validCategoryDoc() {
+      return request.resource.data.keys().hasOnly(['uid', 'name', 'type']) &&
+        request.resource.data.uid == request.auth.uid &&
+        nonEmptyString(request.resource.data.name, 60) &&
+        request.resource.data.type in ['gasto', 'ingreso'];
+    }
+
+    function validPaymentMethodDoc() {
+      return request.resource.data.keys().hasOnly(['uid', 'name']) &&
+        request.resource.data.uid == request.auth.uid &&
+        nonEmptyString(request.resource.data.name, 60);
+    }
+
+    function validBudgetDoc() {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'category',
+          'monthKey',
+          'limitAmount',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        request.resource.data.uid == request.auth.uid &&
+        nonEmptyString(request.resource.data.category, 80) &&
+        request.resource.data.monthKey is string &&
+        request.resource.data.monthKey.matches('^[0-9]{4}-[0-9]{2}$') &&
+        request.resource.data.limitAmount is number &&
+        request.resource.data.limitAmount > 0 &&
+        request.resource.data.limitAmount < 1000000000 &&
+        nonEmptyString(request.resource.data.createdAt, 40) &&
+        nonEmptyString(request.resource.data.updatedAt, 40);
+    }
+
+    match /users/{uid} {
+      allow create: if isOwner(uid) && validUserDoc();
+      allow read, delete: if isOwner(uid);
+      allow update: if isOwner(uid) && request.resource.data.uid == resource.data.uid && validUserDoc();
+    }
+
+    match /transactions/{id} {
+      allow create: if isOwnerFromRequest() && validTransactionDoc();
+      allow read, delete: if isOwnerFromResource();
+      allow update: if isOwnerUpdate() && validTransactionDoc();
+    }
+
+    match /categories/{id} {
+      allow create: if isOwnerFromRequest() && validCategoryDoc();
+      allow read, delete: if isOwnerFromResource();
+      allow update: if isOwnerUpdate() && validCategoryDoc();
+    }
+
+    match /paymentMethods/{id} {
+      allow create: if isOwnerFromRequest() && validPaymentMethodDoc();
+      allow read, delete: if isOwnerFromResource();
+      allow update: if isOwnerUpdate() && validPaymentMethodDoc();
+    }
+
+    match /budgets/{id} {
+      allow create: if isOwnerFromRequest() && validBudgetDoc();
+      allow read, delete: if isOwnerFromResource();
+      allow update: if isOwnerUpdate() && validBudgetDoc();
+    }
+  }
+}
