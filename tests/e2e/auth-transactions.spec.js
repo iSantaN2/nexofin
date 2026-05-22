@@ -2,10 +2,11 @@ import { expect, test } from "@playwright/test";
 
 const E2E_EMAIL = process.env.E2E_EMAIL;
 const E2E_PASSWORD = process.env.E2E_PASSWORD;
+const E2E_AUTH_ENABLED = process.env.E2E_AUTH_ENABLED === "true";
 
 test.skip(
-  !E2E_EMAIL || !E2E_PASSWORD,
-  "Define E2E_EMAIL y E2E_PASSWORD para ejecutar las pruebas E2E."
+  !E2E_AUTH_ENABLED || !E2E_EMAIL || !E2E_PASSWORD,
+  "Define E2E_AUTH_ENABLED=true y credenciales E2E_EMAIL/E2E_PASSWORD para ejecutar este flujo."
 );
 
 async function login(page) {
@@ -13,6 +14,14 @@ async function login(page) {
   await page.getByPlaceholder("Correo").fill(E2E_EMAIL);
   await page.getByPlaceholder("Contrasena").fill(E2E_PASSWORD);
   await page.getByRole("button", { name: "Entrar" }).click();
+
+  await page.waitForTimeout(1000);
+
+  if (page.url().includes("/login")) {
+    throw new Error(
+      "Login E2E fallido: revisa E2E_EMAIL/E2E_PASSWORD o verifica que el usuario exista y este verificado."
+    );
+  }
 }
 
 async function handlePostLoginRedirects(page) {

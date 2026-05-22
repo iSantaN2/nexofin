@@ -35,6 +35,7 @@ jobs:
 
       - name: Run E2E tests
         env:
+          E2E_AUTH_ENABLED: ${{ secrets.E2E_AUTH_ENABLED }}
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
           E2E_REGISTER_ENABLED: ${{ secrets.E2E_REGISTER_ENABLED }}

@@ -15,6 +15,7 @@ Aplicacion financiera personal construida con React, Vite y Firebase.
 Las pruebas E2E usan una cuenta real de prueba (Firebase Auth).  
 Define estas variables de entorno antes de ejecutar:
 
+- `E2E_AUTH_ENABLED` (`true` para ejecutar flujo login + transacciones)
 - `E2E_EMAIL`
 - `E2E_PASSWORD`
 - `E2E_REGISTER_ENABLED` (opcional, `true` para test de registro)
@@ -26,6 +27,7 @@ Define estas variables de entorno antes de ejecutar:
 ```powershell
 $env:E2E_EMAIL="tu_correo_prueba@dominio.com"
 $env:E2E_PASSWORD="tu_password_prueba"
+$env:E2E_AUTH_ENABLED="true"
 npm run e2e
 ```
 
@@ -59,6 +61,7 @@ Ejecuta automaticamente:
 
 Para habilitar E2E con cuenta real en GitHub, agrega estos `Secrets`:
 
+- `E2E_AUTH_ENABLED` (`true` para activar test de login/transacciones)
 - `E2E_EMAIL`
 - `E2E_PASSWORD`
 - `E2E_REGISTER_ENABLED` (opcional)
