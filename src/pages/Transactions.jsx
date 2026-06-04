@@ -1,10 +1,15 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Edit2, Search, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/ConfirmModal";
 import AddTransactionModal from "../components/AddTransactionModal";
 import { useTransactions } from "../context/TransactionsContext";
+import CategoryIcon from "../components/CategoryIcon";
+import EmptyState from "../components/ui/EmptyState";
+import PageHeader from "../components/ui/PageHeader";
+import SectionPanel from "../components/ui/SectionPanel";
 
 const APP_TIME_ZONE = "America/Lima";
 const ITEMS_PER_PAGE = 10;
@@ -15,21 +20,6 @@ const SORT_OPTIONS = [
   { value: "amount_desc", label: "Mayor monto" },
   { value: "amount_asc", label: "Menor monto" },
 ];
-
-const categoryIcons = {
-  comida: "🍕",
-  supermercado: "🛒",
-  transporte: "🚗",
-  gasolina: "⛽",
-  entretenimiento: "🎮",
-  salario: "💵",
-  educacion: "🎓",
-  salud: "💊",
-  hogar: "🏠",
-  compras: "🛍️",
-  viajes: "✈️",
-  otros: "💡",
-};
 
 function toDate(value) {
   if (!value) return null;
@@ -70,11 +60,6 @@ function formatTimePE(value) {
   });
 }
 
-function getCategoryIcon(category = "") {
-  const key = normalizeText(category);
-  return categoryIcons[key] || "💡";
-}
-
 function parseStartDate(dateString) {
   if (!dateString) return null;
   const parsed = new Date(`${dateString}T00:00:00`);
@@ -89,6 +74,7 @@ function parseEndDate(dateString) {
 
 export default function Transactions() {
   const { transactions, deleteTransaction, updateTransaction } = useTransactions();
+  const [searchParams] = useSearchParams();
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [startDate, setStartDate] = useState("");
@@ -227,6 +213,16 @@ export default function Transactions() {
     }
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get("category");
+    if (!categoryFromUrl) return;
+    if (!categories.includes(categoryFromUrl)) return;
+
+    setCategoryFilter(categoryFromUrl);
+    setTypeFilter("expense");
+    setCurrentPage(1);
+  }, [categories, searchParams]);
+
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -272,9 +268,12 @@ export default function Transactions() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
-      <h1 className="text-2xl font-semibold">Transacciones</h1>
+      <PageHeader
+        title="Transacciones"
+        description="Consulta, filtra y ajusta tus movimientos financieros."
+      />
 
-      <div className="bg-white shadow rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
+      <SectionPanel className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
         <div className="xl:col-span-2">
           <label className="block text-sm mb-1">Buscar</label>
           <div className="relative">
@@ -391,14 +390,14 @@ export default function Transactions() {
         <button
           type="button"
           onClick={resetFilters}
-          className="xl:ml-auto bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg"
+          className="xl:ml-auto bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium"
         >
           Limpiar filtros
         </button>
-      </div>
+      </SectionPanel>
 
       {activeFilterChips.length > 0 && (
-        <div className="bg-white shadow rounded-2xl p-4">
+        <SectionPanel>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm text-gray-500 mr-1">Filtros activos:</p>
             {activeFilterChips.map((chip) => (
@@ -421,10 +420,10 @@ export default function Transactions() {
               Limpiar todo
             </button>
           </div>
-        </div>
+        </SectionPanel>
       )}
 
-      <div className="bg-white shadow rounded-2xl p-6 flex flex-col sm:flex-row sm:justify-between gap-3">
+      <SectionPanel className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p className="text-green-600 font-semibold">Ingresos: S/ {totals.ingresos.toFixed(2)}</p>
           <p className="text-red-600 font-semibold">Gastos: S/ {totals.gastos.toFixed(2)}</p>
@@ -437,21 +436,17 @@ export default function Transactions() {
         >
           Balance: S/ {totals.balance.toFixed(2)}
         </h2>
-      </div>
+      </SectionPanel>
 
-      <div className="bg-white shadow rounded-2xl p-6">
-        <h3 className="font-semibold mb-4">Historial</h3>
-
+      <SectionPanel title="Historial">
         <AnimatePresence>
           {currentTransactions.length === 0 ? (
-            <motion.p
-              key="empty"
-              className="text-gray-400 text-center py-10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              No hay transacciones para mostrar.
-            </motion.p>
+            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <EmptyState
+                title="No hay transacciones para mostrar."
+                description="Cambia los filtros o agrega un nuevo movimiento para verlo aqui."
+              />
+            </motion.div>
           ) : (
             <motion.ul
               key="list"
@@ -464,14 +459,14 @@ export default function Transactions() {
                 return (
                   <motion.li
                     key={transaction.id}
-                    className="bg-gray-50 rounded-xl border border-gray-100 p-4 flex justify-between items-center shadow-sm hover:shadow-md transition-all"
+                    className="bg-gray-50 rounded-lg border border-gray-100 p-4 flex justify-between items-center shadow-sm hover:shadow-md transition-all"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{getCategoryIcon(transaction.category)}</span>
+                      <CategoryIcon category={transaction.category} type={transaction.type} />
                       <div>
                         <p className="font-semibold text-gray-800">
                           {transaction.category || "Sin categoria"}
@@ -554,7 +549,7 @@ export default function Transactions() {
             </button>
           </div>
         )}
-      </div>
+      </SectionPanel>
 
       <ConfirmModal
         show={showConfirm}
@@ -579,3 +574,4 @@ export default function Transactions() {
     </div>
   );
 }
+

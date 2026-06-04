@@ -12,6 +12,7 @@ import {
 import { db } from "../firebase/config";
 import toast from "react-hot-toast";
 import { useAuth } from "./AuthContext";
+import { AppContext } from "./AppContext";
 import {
   normalizeIsoDate,
   normalizeOptionalText,
@@ -22,8 +23,56 @@ import {
 
 export const TransactionsContext = createContext();
 
+const MONTH_KEY_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Lima",
+  year: "numeric",
+  month: "2-digit",
+});
+
+function getMonthKey(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = MONTH_KEY_FORMATTER.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  return year && month ? `${year}-${month}` : "";
+}
+
+function isIncomeTransaction(transaction) {
+  return transaction?.type === "Ingreso" || transaction?.type === "income";
+}
+
+function getUnusualExpenseSignal(transaction, history) {
+  if (!transaction || isIncomeTransaction(transaction)) return null;
+
+  const amount = Number(transaction.amount) || 0;
+  const sameCategoryExpenses = history
+    .filter((item) => item.category === transaction.category)
+    .filter((item) => !isIncomeTransaction(item))
+    .map((item) => Number(item.amount) || 0)
+    .filter((value) => value > 0);
+
+  if (sameCategoryExpenses.length < 3) return null;
+
+  const average =
+    sameCategoryExpenses.reduce((sum, value) => sum + value, 0) / sameCategoryExpenses.length;
+  const increaseAmount = amount - average;
+  const increasePercent = average > 0 ? (increaseAmount / average) * 100 : null;
+
+  if (amount >= average * 1.5 && increaseAmount >= 30) {
+    return {
+      average,
+      increaseAmount,
+      increasePercent,
+    };
+  }
+
+  return null;
+}
+
 export function TransactionsProvider({ children }) {
   const { user } = useAuth();
+  const { createNotification } = useContext(AppContext);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +95,7 @@ export function TransactionsProvider({ children }) {
   }, [user?.uid]);
 
   const sanitizeTransaction = (data) => {
-    const { id, ...rest } = data;
+    const { id: _id, ...rest } = data;
     const now = new Date();
     const fixedDate = normalizeIsoDate(rest.date, now);
     const fixedCreatedAt = normalizeIsoDate(rest.createdAt, now);
@@ -94,6 +143,20 @@ export function TransactionsProvider({ children }) {
         return null;
       }
       const docRef = await addDoc(collection(db, "transactions"), cleanData);
+      const unusualSignal = getUnusualExpenseSignal(cleanData, transactions);
+      if (unusualSignal) {
+        const monthKey = getMonthKey(cleanData.date);
+        await createNotification({
+          type: "unusual_expense",
+          title: `Gasto inusual: ${cleanData.category}`,
+          message: `Este gasto fue S/ ${unusualSignal.increaseAmount.toFixed(2)} mayor que tu promedio en esta categoria.`,
+          recommendation: `Revisa si este gasto de ${cleanData.category} fue puntual. Si se repetira, considera ajustar tu meta o recortar otros gastos del mes.`,
+          actionPath: `/transactions?category=${encodeURIComponent(cleanData.category)}`,
+          severity: "warning",
+          sourceKey: `unusual-transaction-${monthKey}-${cleanData.category}-${docRef.id}`,
+          monthKey,
+        });
+      }
       toast.success("Transaccion anadida correctamente", { id: toastId });
       return docRef.id;
     } catch (error) {
@@ -181,3 +244,4 @@ export function TransactionsProvider({ children }) {
 export function useTransactions() {
   return useContext(TransactionsContext);
 }
+

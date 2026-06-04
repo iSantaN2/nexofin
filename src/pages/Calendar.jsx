@@ -5,29 +5,18 @@ import "react-calendar/dist/Calendar.css";
 import { Plus, CalendarDays, CalendarRange, RefreshCw } from "lucide-react";
 import { TransactionsContext } from "../context/TransactionsContext";
 import AddTransactionModal from "../components/AddTransactionModal";
+import CategoryIcon from "../components/CategoryIcon";
+import Button from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
+import MetricCard from "../components/ui/MetricCard";
+import PageHeader from "../components/ui/PageHeader";
+import SectionPanel from "../components/ui/SectionPanel";
 
 const FILTER_OPTIONS = [
   { key: "all", label: "Todas" },
   { key: "income", label: "Ingresos" },
   { key: "expense", label: "Gastos" },
 ];
-
-const categoryIcons = {
-  comida: "\u{1F355}",
-  "comida rapida": "\u{1F354}",
-  supermercado: "\u{1F6D2}",
-  transporte: "\u{1F697}",
-  gasolina: "\u26FD",
-  entretenimiento: "\u{1F3AE}",
-  salario: "\u{1F4B5}",
-  ingresos: "\u{1F4B0}",
-  educacion: "\u{1F393}",
-  salud: "\u{1F48A}",
-  hogar: "\u{1F3E0}",
-  compras: "\u{1F6CD}\uFE0F",
-  viajes: "\u2708\uFE0F",
-  otros: "\u{1F4A1}",
-};
 
 function toDate(value) {
   if (!value) return null;
@@ -169,11 +158,6 @@ export default function CalendarPage() {
     return map;
   }, [normalizedTransactions]);
 
-  const getCategoryIcon = (category = "") => {
-    const key = normalizeCategory(category);
-    return categoryIcons[key] || "\u{1F4A1}";
-  };
-
   const goToToday = () => {
     setSelectedDate(new Date());
   };
@@ -196,38 +180,25 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="p-4 flex flex-col items-center gap-4">
-      <h2 className="text-xl font-semibold">Calendario financiero</h2>
+    <div className="flex flex-col gap-4 pb-12">
+      <PageHeader
+        title="Calendario financiero"
+        description="Revisa movimientos por dia y detecta patrones semanales."
+      />
 
-      <div className="w-full max-w-4xl bg-white rounded-2xl border border-[#e4edff] shadow p-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-          <div className="rounded-xl bg-green-100 p-3">
-            <p className="text-xs text-green-800 font-medium">Ingresos del dia</p>
-            <p className="text-lg font-bold text-green-700">S/ {daySummary.ingresos.toFixed(2)}</p>
-          </div>
-          <div className="rounded-xl bg-red-100 p-3">
-            <p className="text-xs text-red-800 font-medium">Gastos del dia</p>
-            <p className="text-lg font-bold text-red-700">S/ {daySummary.gastos.toFixed(2)}</p>
-          </div>
-          <div className="rounded-xl bg-[#e9f2ff] p-3">
-            <p className="text-xs text-[#0a2b6e] font-medium">Balance del dia</p>
-            <p
-              className={`text-lg font-bold ${
-                daySummary.balance >= 0 ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              S/ {daySummary.balance.toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded-xl bg-gray-100 p-3">
-            <p className="text-xs text-gray-700 font-medium">Movimientos</p>
-            <p className="text-lg font-bold text-gray-900">{daySummary.count}</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard title="Ingresos del dia" value={`S/ ${daySummary.ingresos.toFixed(2)}`} color="green" />
+        <MetricCard title="Gastos del dia" value={`S/ ${daySummary.gastos.toFixed(2)}`} color="red" />
+        <MetricCard
+          title="Balance del dia"
+          value={`S/ ${daySummary.balance.toFixed(2)}`}
+          color={daySummary.balance >= 0 ? "green" : "red"}
+        />
+        <MetricCard title="Movimientos" value={daySummary.count} color="slate" />
       </div>
 
-      <div className="flex justify-between items-center w-full max-w-4xl gap-3 flex-wrap">
-        <div className="flex bg-gray-100 rounded-xl overflow-hidden">
+      <div className="flex justify-between items-center w-full gap-3 flex-wrap">
+        <div className="flex bg-gray-100 rounded-lg overflow-hidden">
           <button
             onClick={() => setViewMode("month")}
             className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition ${
@@ -252,7 +223,7 @@ export default function CalendarPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
           {FILTER_OPTIONS.map((option) => (
             <button
               key={option.key}
@@ -280,18 +251,19 @@ export default function CalendarPage() {
             ))}
           </select>
 
-          <button
+          <Button
             onClick={goToToday}
-            className="flex items-center gap-1 text-[#0a2b6e] text-sm font-medium hover:underline"
+            variant="soft"
+            size="sm"
           >
             <RefreshCw className="w-4 h-4" />
             Hoy
-          </button>
+          </Button>
         </div>
       </div>
 
       {viewMode === "month" ? (
-        <div className="bg-white rounded-2xl shadow-sm p-4 w-full max-w-4xl border border-[#e4edff]">
+        <SectionPanel>
           <div className="mx-auto w-full max-w-[420px] sm:max-w-[520px]">
             <Calendar
               onChange={setSelectedDate}
@@ -301,9 +273,9 @@ export default function CalendarPage() {
               className="rounded-xl border-none w-full"
             />
           </div>
-        </div>
+        </SectionPanel>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm p-4 w-full max-w-4xl border border-[#e4edff]">
+        <SectionPanel>
           <div className="grid grid-cols-7 gap-2">
             {weekDays.map((day) => {
               const isSelected = dayjs(day).isSame(selectedDate, "day");
@@ -313,7 +285,7 @@ export default function CalendarPage() {
                 <button
                   key={day.toISOString()}
                   onClick={() => setSelectedDate(day)}
-                  className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${
+                  className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${
                     isSelected
                       ? "bg-[#0a2b6e] text-white"
                       : "bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -345,26 +317,24 @@ export default function CalendarPage() {
               ))}
             </div>
           </div>
-        </div>
+        </SectionPanel>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm p-4 w-full max-w-4xl border border-[#e4edff]">
-        <h3 className="text-md font-semibold text-gray-700 mb-1">
-          {dayjs(selectedDate).format("D MMMM YYYY")}
-        </h3>
-        <p className="text-xs text-gray-500 mb-3">Detalle del dia seleccionado</p>
-
+      <SectionPanel title={dayjs(selectedDate).format("D MMMM YYYY")}>
         {selectedDayTransactions.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-4">No hay transacciones este dia.</p>
+          <EmptyState
+            title="No hay transacciones este dia."
+            description="Agrega un movimiento para verlo reflejado en el calendario."
+          />
         ) : (
           <ul className="space-y-2">
             {selectedDayTransactions.map((item) => (
               <li
                 key={item.id}
-                className="flex justify-between items-center bg-gray-50 rounded-xl p-3 border border-gray-100"
+                className="flex justify-between items-center bg-gray-50 rounded-lg p-3 border border-gray-100"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{getCategoryIcon(item.category)}</span>
+                  <CategoryIcon category={item.category} type={item.type} />
                   <div>
                     <p className="font-medium text-gray-800">{item.category}</p>
                     <p className="text-xs text-gray-500">
@@ -385,7 +355,7 @@ export default function CalendarPage() {
             ))}
           </ul>
         )}
-      </div>
+      </SectionPanel>
 
       <button
         onClick={() => setShowAddModal(true)}

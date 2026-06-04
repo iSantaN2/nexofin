@@ -1,9 +1,15 @@
-import React, { useContext, useMemo, useState } from "react";
+﻿import React, { useContext, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Trash2, Target } from "lucide-react";
+import { AlertTriangle, ArrowRight, PiggyBank, ShieldCheck, Target, Trash2, Wallet } from "lucide-react";
 import { AppContext } from "../context/AppContext";
 import { TransactionsContext } from "../context/TransactionsContext";
 import { useCategories } from "../context/CategoriesContext";
+import { useAuth } from "../context/AuthContext";
+import EmptyState from "../components/ui/EmptyState";
+import MetricCard from "../components/ui/MetricCard";
+import PageHeader from "../components/ui/PageHeader";
+import SectionPanel from "../components/ui/SectionPanel";
 
 const APP_TIME_ZONE = "America/Lima";
 const MONTH_KEY_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -37,30 +43,198 @@ const getYearMonthKey = (value) => {
   return `${year}-${month}`;
 };
 
+const getMonthDays = (monthKey) => {
+  const [year, month] = (monthKey || "").split("-").map(Number);
+  const now = new Date();
+  if (!year || !month) {
+    return {
+      currentDay: now.getDate(),
+      daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
+    };
+  }
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
+
+  return {
+    currentDay: isCurrentMonth ? now.getDate() : daysInMonth,
+    daysInMonth,
+  };
+};
+
 const isIncome = (transaction) =>
   transaction.type === "Ingreso" || transaction.type === "income";
 
 const getStatus = (progress) => {
-  if (progress >= 100) return { label: "Excedido", color: "text-red-600", bar: "bg-red-500" };
-  if (progress >= 80)
-    return { label: "En riesgo", color: "text-amber-600", bar: "bg-amber-500" };
-  return { label: "Saludable", color: "text-emerald-600", bar: "bg-emerald-500" };
+  if (progress >= 100) {
+    return {
+      key: "exceeded",
+      label: "Excedido",
+      color: "text-red-600",
+      bg: "bg-red-50",
+      border: "border-red-100",
+      bar: "bg-red-500",
+      metricColor: "red",
+    };
+  }
+  if (progress >= 80) {
+    return {
+      key: "risk",
+      label: "En riesgo",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-100",
+      bar: "bg-amber-500",
+      metricColor: "amber",
+    };
+  }
+  return {
+    key: "healthy",
+    label: "Saludable",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+    border: "border-emerald-100",
+    bar: "bg-emerald-500",
+    metricColor: "green",
+  };
 };
 
+const formatMoney = (value) => `S/ ${(Number(value) || 0).toFixed(2)}`;
+
+const getBudgetRecommendation = (item) => {
+  if (item.progress >= 100) {
+    return `Ya superaste esta meta por ${formatMoney(Math.abs(item.remaining))}. Revisa los ultimos gastos o ajusta el limite si fue un gasto excepcional.`;
+  }
+
+  if (item.progress >= 80) {
+    return `Quedan ${formatMoney(Math.max(0, item.remaining))}. Mantén los gastos de esta categoria por debajo de ese monto para cerrar bien el mes.`;
+  }
+
+  if (item.projectedExceeded) {
+    return `Aunque hoy luce saludable, al ritmo actual podria superar la meta cerca del dia ${item.estimatedExceedDay}.`;
+  }
+
+  return `Vas dentro del limite. Puedes usar hasta ${formatMoney(Math.max(0, item.remaining))} sin superar la meta.`;
+};
+
+function BudgetCard({ item, onDelete }) {
+  const progressSafe = Math.max(0, Math.min(item.progress, 100));
+
+  return (
+    <div className={`rounded-2xl border p-4 ${item.status.bg} ${item.status.border}`}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold text-gray-900 flex items-center gap-2">
+            <Target size={16} className="text-[#0a2b6e]" />
+            {item.category}
+          </p>
+          <p className="mt-1 text-sm text-gray-600">
+            Gastado: <span className="font-medium">{formatMoney(item.spent)}</span> de
+            <span className="font-medium"> {formatMoney(item.limit)}</span>
+          </p>
+          <p className={`text-xs font-semibold mt-1 ${item.status.color}`}>
+            {item.status.label} - {item.progress.toFixed(1)}%
+          </p>
+          <p className="mt-2 text-sm text-slate-600">{item.recommendation}</p>
+          {item.projectedSpend > 0 ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Proyeccion de cierre: {formatMoney(item.projectedSpend)}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          <Link
+            to={`/transactions?category=${encodeURIComponent(item.category)}`}
+            className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-medium text-[#0a2b6e] shadow-sm hover:bg-[#eff8ff]"
+          >
+            Ver transacciones
+            <ArrowRight size={15} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => onDelete(item.id)}
+            className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50"
+            title="Eliminar meta"
+          >
+            <Trash2 size={15} />
+            Eliminar
+          </button>
+        </div>
+      </div>
+
+      <div className="h-2 bg-white/75 rounded-full mt-4 overflow-hidden">
+        <div className={`h-full ${item.status.bar}`} style={{ width: `${progressSafe}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function BudgetGroup({ title, description, icon: Icon, items, emptyText, onDelete }) {
+  return (
+    <SectionPanel
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Icon size={18} className="text-[#0a2b6e]" />
+          {title} ({items.length})
+        </span>
+      }
+    >
+      <p className="mb-4 text-sm text-slate-500">{description}</p>
+      {items.length === 0 ? (
+        <EmptyState title={emptyText} />
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <BudgetCard key={item.id} item={item} onDelete={onDelete} />
+          ))}
+        </div>
+      )}
+    </SectionPanel>
+  );
+}
+
 export default function Budgets() {
-  const { budgets, upsertBudget, deleteBudget, loading } = useContext(AppContext);
+  const {
+    budgets,
+    upsertBudget,
+    deleteBudget,
+    loading,
+    notificationSettings,
+    createNotification,
+  } = useContext(AppContext);
   const { transactions } = useContext(TransactionsContext);
   const { categories } = useCategories();
+  const { user } = useAuth();
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [selectedCategory, setSelectedCategory] = useState("");
   const [limitAmount, setLimitAmount] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const monthDays = useMemo(() => getMonthDays(selectedMonth), [selectedMonth]);
+
   const expenseCategories = useMemo(
     () => categories.filter((item) => item.type === "gasto").map((item) => item.name),
     [categories]
   );
+
+  const monthTransactions = useMemo(
+    () => transactions.filter((tx) => getYearMonthKey(tx.date) === selectedMonth),
+    [transactions, selectedMonth]
+  );
+
+  const monthTotals = useMemo(() => {
+    return monthTransactions.reduce(
+      (totals, tx) => {
+        const amount = Number(tx.amount) || 0;
+        if (isIncome(tx)) totals.income += amount;
+        else totals.expenses += amount;
+        return totals;
+      },
+      { income: 0, expenses: 0 }
+    );
+  }, [monthTransactions]);
 
   const budgetsForMonth = useMemo(
     () => budgets.filter((item) => item.monthKey === selectedMonth),
@@ -70,8 +244,7 @@ export default function Budgets() {
   const spentByCategory = useMemo(() => {
     const totals = {};
 
-    transactions
-      .filter((tx) => getYearMonthKey(tx.date) === selectedMonth)
+    monthTransactions
       .filter((tx) => !isIncome(tx))
       .forEach((tx) => {
         const category = tx.category || "Sin categoria";
@@ -79,7 +252,7 @@ export default function Budgets() {
       });
 
     return totals;
-  }, [transactions, selectedMonth]);
+  }, [monthTransactions]);
 
   const budgetCards = useMemo(() => {
     return budgetsForMonth
@@ -88,17 +261,63 @@ export default function Budgets() {
         const limit = Number(budget.limitAmount) || 0;
         const progress = limit > 0 ? (spent / limit) * 100 : 0;
         const remaining = limit - spent;
-        return {
+        const dailyAverage = spent > 0 ? spent / Math.max(1, monthDays.currentDay) : 0;
+        const projectedSpend = dailyAverage * monthDays.daysInMonth;
+        const projectedExceeded = limit > 0 && projectedSpend > limit;
+        const estimatedExceedDay =
+          projectedExceeded && dailyAverage > 0
+            ? Math.min(monthDays.daysInMonth, Math.ceil(limit / dailyAverage))
+            : null;
+        const status = getStatus(progress);
+
+        const item = {
           ...budget,
           spent,
           limit,
           remaining,
           progress,
-          status: getStatus(progress),
+          status,
+          dailyAverage,
+          projectedSpend,
+          projectedExceeded,
+          estimatedExceedDay,
+        };
+
+        return {
+          ...item,
+          recommendation: getBudgetRecommendation(item),
         };
       })
       .sort((a, b) => b.progress - a.progress);
-  }, [budgetsForMonth, spentByCategory]);
+  }, [budgetsForMonth, monthDays, spentByCategory]);
+
+  const budgetSummary = useMemo(() => {
+    const totalLimit = budgetCards.reduce((sum, item) => sum + item.limit, 0);
+    const totalSpent = budgetCards.reduce((sum, item) => sum + item.spent, 0);
+    const projectedTotal = budgetCards.reduce((sum, item) => sum + (item.projectedSpend || 0), 0);
+    const exceeded = budgetCards.filter((item) => item.status.key === "exceeded");
+    const risk = budgetCards.filter((item) => item.status.key === "risk");
+    const healthy = budgetCards.filter((item) => item.status.key === "healthy");
+    const progress = totalLimit > 0 ? (totalSpent / totalLimit) * 100 : 0;
+    const savings = monthTotals.income - monthTotals.expenses;
+    const savingsRate = monthTotals.income > 0 ? (savings / monthTotals.income) * 100 : null;
+    const globalStatus =
+      exceeded.length > 0 ? "Riesgo alto" : risk.length > 0 ? "Atencion" : "Saludable";
+
+    return {
+      totalLimit,
+      totalSpent,
+      projectedTotal,
+      remaining: totalLimit - totalSpent,
+      progress,
+      exceeded,
+      risk,
+      healthy,
+      savings,
+      savingsRate,
+      globalStatus,
+    };
+  }, [budgetCards, monthTotals]);
 
   const handleSaveBudget = async (e) => {
     e.preventDefault();
@@ -142,24 +361,70 @@ export default function Budgets() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#0a2b6e]">Metas de gasto</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Define limites por categoria y controla si vas saludable, en riesgo o excedido.
-        </p>
-      </div>
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (selectedMonth !== getCurrentMonthKey()) return;
+    if (!budgetCards.length) return;
+    if (!notificationSettings?.budget80Enabled && !notificationSettings?.budget100Enabled) return;
 
-      <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <label className="text-sm text-gray-600">Mes</label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value || getCurrentMonthKey())}
-            className="border rounded-lg px-3 py-2"
-          />
+    budgetCards.forEach((item) => {
+      if (item.progress >= 100 && notificationSettings?.budget100Enabled) {
+        createNotification({
+          type: "budget_limit",
+          title: `Meta excedida: ${item.category}`,
+          message: `Gastaste ${formatMoney(item.spent)} de ${formatMoney(item.limit)} en ${item.category}.`,
+          recommendation: `Revisa los gastos de ${item.category}. Para volver al limite necesitas reducir ${formatMoney(Math.abs(item.remaining))} o ajustar tu meta mensual.`,
+          actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
+          severity: "danger",
+          sourceKey: `budget-${selectedMonth}-${item.category}-100`,
+          monthKey: selectedMonth,
+        });
+        return;
+      }
+
+      if (item.progress >= 80 && notificationSettings?.budget80Enabled) {
+        createNotification({
+          type: "budget_warning",
+          title: `Meta en riesgo: ${item.category}`,
+          message: `${item.category} ya va en ${item.progress.toFixed(1)}% de su meta mensual.`,
+          recommendation: `Te quedan ${formatMoney(Math.max(0, item.remaining))} para el resto del mes. Intenta mantener los proximos gastos de ${item.category} por debajo de ese monto.`,
+          actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
+          severity: "warning",
+          sourceKey: `budget-${selectedMonth}-${item.category}-80`,
+          monthKey: selectedMonth,
+        });
+      }
+    });
+  }, [
+    budgetCards,
+    createNotification,
+    notificationSettings?.budget100Enabled,
+    notificationSettings?.budget80Enabled,
+    selectedMonth,
+    user?.uid,
+  ]);
+
+  return (
+    <div className="space-y-6 pb-20">
+      <PageHeader
+        title="Metas Pro"
+        description="Controla presupuestos, proyecciones y ahorro mensual con una vista ejecutiva."
+      />
+
+      <SectionPanel className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <label className="text-sm text-gray-600">Mes</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value || getCurrentMonthKey())}
+              className="mt-1 block border rounded-lg px-3 py-2 sm:min-w-[220px]"
+            />
+          </div>
+          <div className="text-sm text-slate-500">
+            Dia {monthDays.currentDay} de {monthDays.daysInMonth}
+          </div>
         </div>
 
         <form onSubmit={handleSaveBudget} className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -191,68 +456,126 @@ export default function Budgets() {
           <button
             type="submit"
             disabled={saving}
-            className="bg-[#0a2b6e] hover:bg-[#081f52] text-white rounded-lg px-3 py-2 disabled:opacity-60"
+            className="bg-[#0a2b6e] hover:bg-[#081f52] text-white rounded-lg px-3 py-2 font-medium disabled:opacity-60"
           >
             {saving ? "Guardando..." : "Guardar meta"}
           </button>
         </form>
+      </SectionPanel>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <MetricCard
+          title="Presupuesto general"
+          value={`${formatMoney(budgetSummary.totalSpent)} / ${formatMoney(budgetSummary.totalLimit)}`}
+          helper={`${budgetSummary.progress.toFixed(1)}% usado`}
+          color={budgetSummary.progress >= 100 ? "red" : budgetSummary.progress >= 80 ? "amber" : "blue"}
+        />
+        <MetricCard
+          title="Meta de ahorro"
+          value={formatMoney(budgetSummary.savings)}
+          helper={
+            budgetSummary.savingsRate === null
+              ? "Sin ingresos registrados"
+              : `${budgetSummary.savingsRate.toFixed(1)}% de tus ingresos`
+          }
+          color={budgetSummary.savings >= 0 ? "green" : "red"}
+        />
+        <MetricCard
+          title="Proyeccion mensual"
+          value={formatMoney(budgetSummary.projectedTotal)}
+          helper="Gasto proyectado segun ritmo actual"
+          color={budgetSummary.projectedTotal > budgetSummary.totalLimit ? "amber" : "slate"}
+        />
+        <MetricCard
+          title="Estado global"
+          value={budgetSummary.globalStatus}
+          helper={`${budgetSummary.exceeded.length} excedidas · ${budgetSummary.risk.length} en riesgo`}
+          color={budgetSummary.exceeded.length ? "red" : budgetSummary.risk.length ? "amber" : "green"}
+        />
       </div>
 
-      <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-        <h2 className="font-semibold text-[#0a2b6e] mb-3">Resumen del mes</h2>
-
-        {loading ? (
+      {loading ? (
+        <SectionPanel>
           <p className="text-sm text-gray-500">Cargando metas...</p>
-        ) : budgetCards.length === 0 ? (
-          <p className="text-sm text-gray-500">No tienes metas configuradas para este mes.</p>
-        ) : (
-          <div className="space-y-3">
-            {budgetCards.map((item) => {
-              const progressSafe = Math.max(0, Math.min(item.progress, 100));
-              return (
-                <div key={item.id} className="border border-gray-100 rounded-xl p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-gray-800 flex items-center gap-2">
-                        <Target size={15} className="text-[#0a2b6e]" />
-                        {item.category}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Gastado: <span className="font-medium">S/ {item.spent.toFixed(2)}</span> de
-                        <span className="font-medium"> S/ {item.limit.toFixed(2)}</span>
-                      </p>
-                      <p className={`text-xs font-semibold mt-1 ${item.status.color}`}>
-                        {item.status.label} � {item.progress.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {item.remaining >= 0
-                          ? `Te quedan S/ ${item.remaining.toFixed(2)} en esta categoria.`
-                          : `Te pasaste por S/ ${Math.abs(item.remaining).toFixed(2)} en esta categoria.`}
-                      </p>
-                    </div>
+        </SectionPanel>
+      ) : budgetCards.length === 0 ? (
+        <SectionPanel>
+          <EmptyState
+            title="No tienes metas configuradas para este mes."
+            description="Crea una meta por categoria para recibir alertas y entender mejor tus limites."
+          />
+        </SectionPanel>
+      ) : (
+        <div className="space-y-6">
+          <BudgetGroup
+            title="Excedidas"
+            description="Prioridad alta: estas categorias ya pasaron el limite definido."
+            icon={AlertTriangle}
+            items={budgetSummary.exceeded}
+            emptyText="No hay metas excedidas. Buen control."
+            onDelete={handleDeleteBudget}
+          />
+          <BudgetGroup
+            title="En riesgo"
+            description="Categorias que ya superaron el 80% o podrian complicarse."
+            icon={Wallet}
+            items={budgetSummary.risk}
+            emptyText="No hay metas en riesgo."
+            onDelete={handleDeleteBudget}
+          />
+          <BudgetGroup
+            title="Saludables"
+            description="Categorias dentro de margen, con espacio para cerrar bien el mes."
+            icon={ShieldCheck}
+            items={budgetSummary.healthy}
+            emptyText="Aun no hay metas saludables para este mes."
+            onDelete={handleDeleteBudget}
+          />
+        </div>
+      )}
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteBudget(item.id)}
-                      className="p-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-600"
-                      title="Eliminar meta"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-
-                  <div className="h-2 bg-gray-100 rounded-full mt-3 overflow-hidden">
-                    <div
-                      className={`h-full ${item.status.bar}`}
-                      style={{ width: `${progressSafe}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+      <SectionPanel title="Lectura rapida del mes">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="rounded-2xl border border-[#dbe8ff] bg-[#f8fbff] p-4">
+            <div className="flex items-center gap-2 text-[#0a2b6e]">
+              <Target size={18} />
+              <p className="font-semibold">Presupuesto general</p>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              Has usado {budgetSummary.progress.toFixed(1)}% del presupuesto configurado.
+              {budgetSummary.remaining >= 0
+                ? ` Restan ${formatMoney(budgetSummary.remaining)}.`
+                : ` Hay exceso de ${formatMoney(Math.abs(budgetSummary.remaining))}.`}
+            </p>
           </div>
-        )}
-      </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <PiggyBank size={18} />
+              <p className="font-semibold">Ahorro mensual</p>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              {budgetSummary.savings >= 0
+                ? `Tu balance mensual disponible es ${formatMoney(budgetSummary.savings)}.`
+                : `Tus gastos superan tus ingresos por ${formatMoney(Math.abs(budgetSummary.savings))}.`}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 text-amber-700">
+              <AlertTriangle size={18} />
+              <p className="font-semibold">Siguiente accion</p>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              {budgetSummary.exceeded.length > 0
+                ? `Revisa primero ${budgetSummary.exceeded[0].category}, es la meta mas critica.`
+                : budgetSummary.risk.length > 0
+                ? `Vigila ${budgetSummary.risk[0].category}, esta cerca del limite.`
+                : "Mantén el ritmo actual y registra tus movimientos con frecuencia."}
+            </p>
+          </div>
+        </div>
+      </SectionPanel>
     </div>
   );
 }

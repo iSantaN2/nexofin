@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Pencil,
   Trash2,
@@ -7,17 +7,24 @@ import {
   WalletCards,
   ShieldAlert,
   UserRound,
+  BellRing,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useCategories } from "../context/CategoriesContext";
 import { usePaymentMethods } from "../context/PaymentMethodsContext";
 import { useAuth } from "../context/AuthContext";
+import { AppContext } from "../context/AppContext";
+import Button from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
+import PageHeader from "../components/ui/PageHeader";
+import SectionPanel from "../components/ui/SectionPanel";
 
 const TABS = [
   { key: "profile", label: "Perfil", icon: UserCircle2 },
   { key: "categories", label: "Categorias", icon: LayoutGrid },
   { key: "methods", label: "Metodos de pago", icon: WalletCards },
+  { key: "notifications", label: "Notificaciones", icon: BellRing },
 ];
 
 function getAuthErrorMessage(error, fallback) {
@@ -55,6 +62,7 @@ function formatAuthDate(value) {
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile");
+  const { notificationSettings, updateNotificationSettings } = useContext(AppContext);
   const { categories, addCategory, editCategory, deleteCategory } = useCategories();
   const { methods, addMethod, editMethod, deleteMethod } = usePaymentMethods();
   const { user, updateUserDisplayName, updateUserEmail, updateUserPassword, deleteUserAccount } =
@@ -62,10 +70,12 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#0a2b6e]">Ajustes</h1>
-      <p className="text-gray-500">Gestiona perfil, categorias y metodos de pago</p>
+      <PageHeader
+        title="Ajustes"
+        description="Gestiona perfil, categorias, metodos de pago y notificaciones."
+      />
 
-      <div className="flex flex-wrap gap-2 border-b border-[#d9e6ff] pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-[#d9e6ff] pb-3">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -83,7 +93,7 @@ export default function Settings() {
         ))}
       </div>
 
-      <div className="bg-white p-6 rounded-2xl shadow border border-[#e4edff]">
+      <SectionPanel>
         {activeTab === "profile" && (
           <ProfileSettings
             user={user}
@@ -111,6 +121,95 @@ export default function Settings() {
             deleteMethod={deleteMethod}
           />
         )}
+
+        {activeTab === "notifications" && (
+          <NotificationSettings
+            notificationSettings={notificationSettings}
+            updateNotificationSettings={updateNotificationSettings}
+          />
+        )}
+      </SectionPanel>
+    </div>
+  );
+}
+
+function NotificationSettings({ notificationSettings, updateNotificationSettings }) {
+  const [savingKey, setSavingKey] = useState("");
+
+  const toggles = [
+    {
+      key: "budget80Enabled",
+      title: "Alerta al 80% de meta",
+      description:
+        "Muestra aviso cuando una categoria de gasto llega al 80% de su meta mensual.",
+    },
+    {
+      key: "budget100Enabled",
+      title: "Alerta al 100% de meta",
+      description:
+        "Muestra aviso cuando una categoria llega o supera el 100% de su meta mensual.",
+    },
+    {
+      key: "dailyReminderEnabled",
+      title: "Recordatorio diario",
+      description:
+        "Muestra aviso una vez al dia cuando aun no registraste movimientos hoy.",
+    },
+  ];
+
+  const handleToggle = (keyName) => {
+    const currentValue = !!notificationSettings?.[keyName];
+    setSavingKey(keyName);
+    updateNotificationSettings({ [keyName]: !currentValue });
+    setTimeout(() => {
+      setSavingKey("");
+    }, 250);
+    toast.success("Preferencia de notificacion actualizada");
+  };
+
+  return (
+    <div className="space-y-5">
+      <h3 className="text-lg font-semibold text-[#0a2b6e]">Notificaciones financieras</h3>
+      <p className="text-sm text-gray-500">
+        Configura que alertas quieres recibir dentro del dashboard.
+      </p>
+
+      <div className="space-y-3">
+        {toggles.map((toggle) => {
+          const enabled = !!notificationSettings?.[toggle.key];
+          const isSaving = savingKey === toggle.key;
+
+          return (
+            <div
+              key={toggle.key}
+              className="border border-[#e4edff] rounded-xl p-4 flex items-start justify-between gap-4"
+            >
+              <div>
+                <p className="font-medium text-gray-800">{toggle.title}</p>
+                <p className="text-sm text-gray-500 mt-1">{toggle.description}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggle(toggle.key)}
+                disabled={isSaving}
+                className={`relative inline-flex h-7 w-12 shrink-0 rounded-full border transition ${
+                  enabled
+                    ? "bg-[#12c59a] border-[#12c59a]"
+                    : "bg-gray-200 border-gray-300"
+                } ${isSaving ? "opacity-70 cursor-not-allowed" : ""}`}
+                aria-pressed={enabled}
+                aria-label={toggle.title}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                    enabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -327,13 +426,14 @@ function ProfileSettings({
             className="w-full border rounded-lg p-2"
             required
           />
-          <button
+          <Button
             type="submit"
             disabled={nameLoading}
-            className="w-full bg-[#0a2b6e] hover:bg-[#081f52] text-white py-2 rounded-lg disabled:opacity-60"
+            variant="primary"
+            className="w-full"
           >
             {nameLoading ? "Guardando..." : "Actualizar nombre"}
-          </button>
+          </Button>
         </form>
 
         <form onSubmit={handleUpdateEmail} className="border border-[#e4edff] rounded-xl p-4 space-y-3">
@@ -354,13 +454,14 @@ function ProfileSettings({
             className="w-full border rounded-lg p-2"
             required
           />
-          <button
+          <Button
             type="submit"
             disabled={emailLoading}
-            className="w-full bg-[#0a2b6e] hover:bg-[#081f52] text-white py-2 rounded-lg disabled:opacity-60"
+            variant="primary"
+            className="w-full"
           >
             {emailLoading ? "Actualizando..." : "Actualizar correo"}
-          </button>
+          </Button>
         </form>
 
         <form
@@ -392,13 +493,14 @@ function ProfileSettings({
             className="w-full border rounded-lg p-2"
             required
           />
-          <button
+          <Button
             type="submit"
             disabled={passwordLoading}
-            className="w-full bg-[#1f67ff] hover:bg-[#0a2b6e] text-white py-2 rounded-lg disabled:opacity-60"
+            variant="brand"
+            className="w-full"
           >
             {passwordLoading ? "Actualizando..." : "Actualizar contrasena"}
-          </button>
+          </Button>
         </form>
 
         <div className="border border-[#e4edff] rounded-xl p-4 space-y-3">
@@ -442,14 +544,14 @@ function ProfileSettings({
           className="w-full border border-red-300 rounded-lg p-2"
           required
         />
-        <button
+        <Button
           type="submit"
           disabled={deleteLoading}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-60"
+          variant="danger"
         >
           <Trash2 size={16} />
           {deleteLoading ? "Eliminando..." : "Eliminar cuenta"}
-        </button>
+        </Button>
       </form>
 
       {showDeleteConfirmModal && (
@@ -460,22 +562,22 @@ function ProfileSettings({
               Vas a eliminar tu cuenta y todos tus datos. Esta accion no se puede deshacer.
             </p>
             <div className="flex gap-2 justify-end">
-              <button
+              <Button
                 type="button"
+                variant="neutral"
                 onClick={() => setShowDeleteConfirmModal(false)}
                 disabled={deleteLoading}
-                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-60"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="danger"
                 onClick={executeDeleteAccount}
                 disabled={deleteLoading}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
               >
                 {deleteLoading ? "Eliminando..." : "Si, eliminar todo"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -536,13 +638,14 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
           <option value="gasto">Gasto</option>
           <option value="ingreso">Ingreso</option>
         </select>
-        <button
+        <Button
           type="button"
           onClick={handleAdd}
-          className="bg-[#0a2b6e] hover:bg-[#081f52] text-white px-6 py-3 rounded-lg"
+          variant="primary"
+          size="lg"
         >
           Agregar
-        </button>
+        </Button>
       </div>
 
       <CategoryList
@@ -590,7 +693,7 @@ function CategoryList({
     <div>
       <h4 className="font-semibold mb-2 text-gray-700">{title}</h4>
       {items.length === 0 ? (
-        <p className="text-sm text-gray-400">Sin registros</p>
+        <EmptyState title="Sin registros" description="Agrega un elemento para verlo en esta lista." />
       ) : (
         <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
           {items.map((item) => (
@@ -620,13 +723,14 @@ function CategoryList({
 
               <div className="flex items-center gap-2">
                 {editingId === item.id ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onSave(item.id)}
-                    className="px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm"
+                    variant="success"
+                    size="sm"
                   >
                     Guardar
-                  </button>
+                  </Button>
                 ) : (
                   <button
                     type="button"
@@ -695,17 +799,18 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
           placeholder="Nuevo metodo de pago"
           className="flex-1 border rounded-lg p-3"
         />
-        <button
+        <Button
           type="button"
           onClick={handleAdd}
-          className="bg-[#0a2b6e] hover:bg-[#081f52] text-white px-6 py-3 rounded-lg"
+          variant="primary"
+          size="lg"
         >
           Agregar
-        </button>
+        </Button>
       </div>
 
       {methods.length === 0 ? (
-        <p className="text-sm text-gray-400">Sin metodos registrados</p>
+        <EmptyState title="Sin metodos registrados" description="Agrega tus metodos de pago habituales." />
       ) : (
         <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
           {methods.map((method) => (
@@ -722,13 +827,14 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
 
               <div className="flex items-center gap-2">
                 {editingId === method.id ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handleSave(method.id)}
-                    className="px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm"
+                    variant="success"
+                    size="sm"
                   >
                     Guardar
-                  </button>
+                  </Button>
                 ) : (
                   <button
                     type="button"

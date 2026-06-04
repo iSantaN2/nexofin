@@ -105,6 +105,74 @@ service cloud.firestore {
         nonEmptyString(request.resource.data.updatedAt, 40);
     }
 
+    function validNotificationSettingsDoc() {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'budget80Enabled',
+          'budget100Enabled',
+          'dailyReminderEnabled',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.budget80Enabled is bool &&
+        request.resource.data.budget100Enabled is bool &&
+        request.resource.data.dailyReminderEnabled is bool &&
+        optionalString(request.resource.data.createdAt, 40) &&
+        nonEmptyString(request.resource.data.updatedAt, 40);
+    }
+
+    function validNotificationDoc() {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'type',
+          'title',
+          'message',
+          'severity',
+          'recommendation',
+          'actionPath',
+          'sourceKey',
+          'monthKey',
+          'read',
+          'status',
+          'resolvedAt',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        request.resource.data.uid == request.auth.uid &&
+        nonEmptyString(request.resource.data.type, 50) &&
+        nonEmptyString(request.resource.data.title, 120) &&
+        nonEmptyString(request.resource.data.message, 500) &&
+        request.resource.data.severity in ['info', 'success', 'warning', 'danger'] &&
+        request.resource.data.read is bool &&
+        (
+          !('recommendation' in request.resource.data) ||
+          optionalString(request.resource.data.recommendation, 500)
+        ) &&
+        (
+          !('actionPath' in request.resource.data) ||
+          optionalString(request.resource.data.actionPath, 160)
+        ) &&
+        (
+          !('sourceKey' in request.resource.data) ||
+          optionalString(request.resource.data.sourceKey, 120)
+        ) &&
+        (
+          !('monthKey' in request.resource.data) ||
+          optionalString(request.resource.data.monthKey, 20)
+        ) &&
+        (
+          !('status' in request.resource.data) ||
+          request.resource.data.status in ['new', 'read', 'resolved']
+        ) &&
+        (
+          !('resolvedAt' in request.resource.data) ||
+          optionalString(request.resource.data.resolvedAt, 40)
+        ) &&
+        nonEmptyString(request.resource.data.createdAt, 40) &&
+        nonEmptyString(request.resource.data.updatedAt, 40);
+    }
+
     match /users/{uid} {
       allow create: if isOwner(uid) && validUserDoc();
       allow read, delete: if isOwner(uid);
@@ -133,6 +201,17 @@ service cloud.firestore {
       allow create: if isOwnerFromRequest() && validBudgetDoc();
       allow read, delete: if isOwnerFromResource();
       allow update: if isOwnerUpdate() && validBudgetDoc();
+    }
+
+    match /notificationSettings/{uid} {
+      allow create, update: if isOwner(uid) && validNotificationSettingsDoc();
+      allow read, delete: if isOwner(uid);
+    }
+
+    match /notifications/{id} {
+      allow create: if isOwnerFromRequest() && validNotificationDoc();
+      allow read, delete: if isOwnerFromResource();
+      allow update: if isOwnerUpdate() && validNotificationDoc();
     }
   }
 }

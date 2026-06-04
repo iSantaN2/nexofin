@@ -18,18 +18,18 @@ import { normalizeText } from "../utils/validation";
 const PaymentMethodsContext = createContext();
 export const usePaymentMethods = () => useContext(PaymentMethodsContext);
 
+const DEFAULT_METHODS = [
+  { name: "Efectivo" },
+  { name: "Tarjeta" },
+  { name: "Transferencia" },
+  { name: "Yape" },
+  { name: "Plin" },
+];
+
 export const PaymentMethodsProvider = ({ children }) => {
   const { user } = useAuth();
   const [methods, setMethods] = useState([]);
   const [initialized, setInitialized] = useState(false);
-
-  const defaultMethods = [
-    { name: "Efectivo" },
-    { name: "Tarjeta" },
-    { name: "Transferencia" },
-    { name: "Yape" },
-    { name: "Plin" },
-  ];
 
   useEffect(() => {
     if (!user?.uid) {
@@ -48,7 +48,7 @@ export const PaymentMethodsProvider = ({ children }) => {
         setInitialized(true);
         const existing = await getDocs(q);
         if (existing.empty) {
-          for (const method of defaultMethods) {
+          for (const method of DEFAULT_METHODS) {
             await addDoc(collection(db, "paymentMethods"), {
               ...method,
               uid: user.uid,

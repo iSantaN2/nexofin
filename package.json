@@ -27,17 +27,15 @@
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.4",
     "recharts": "^3.3.0",
-    "sweetalert2": "^11.26.3",
-    "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@playwright/test": "^1.55.1",
     "@tailwindcss/postcss": "^4.1.16",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
-    "@playwright/test": "^1.55.1",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",

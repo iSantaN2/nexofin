@@ -1,4 +1,4 @@
-﻿import React, { Suspense, lazy, useState } from "react";
+import React, { Suspense, lazy, useContext, useState } from "react";
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 
 import {
@@ -7,6 +7,7 @@ import {
   CalendarDays,
   BarChart2,
   Target,
+  Bell,
   Settings as SettingsIcon,
   Menu,
   X,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
+import { AppContext } from "./context/AppContext";
 import toast from "react-hot-toast";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -21,6 +23,7 @@ const Transactions = lazy(() => import("./pages/Transactions"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Budgets = lazy(() => import("./pages/Budgets"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
@@ -33,6 +36,7 @@ const navItems = [
   { to: "/calendar", icon: <CalendarDays className="w-5 h-5" />, label: "Calendario" },
   { to: "/reports", icon: <BarChart2 className="w-5 h-5" />, label: "Reportes" },
   { to: "/budgets", icon: <Target className="w-5 h-5" />, label: "Metas" },
+  { to: "/notifications", icon: <Bell className="w-5 h-5" />, label: "Alertas", badge: true },
   { to: "/settings", icon: <SettingsIcon className="w-5 h-5" />, label: "Ajustes" },
 ];
 
@@ -46,6 +50,7 @@ function RouteLoader() {
 
 function AppShell() {
   const { user, logout } = useAuth();
+  const { unreadNotificationsCount } = useContext(AppContext);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const toggleMenu = () => setMenuOpen((value) => !value);
@@ -106,7 +111,12 @@ function AppShell() {
               }
             >
               {item.icon}
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.badge && unreadNotificationsCount > 0 ? (
+                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#12c59a] px-1.5 py-0.5 text-xs font-bold text-white">
+                  {unreadNotificationsCount > 9 ? "9+" : unreadNotificationsCount}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>
@@ -149,6 +159,7 @@ function AppShell() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/budgets" element={<Budgets />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -192,3 +203,4 @@ export default function App() {
     </Suspense>
   );
 }
+

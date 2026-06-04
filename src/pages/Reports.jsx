@@ -14,10 +14,12 @@ import {
   CartesianGrid,
 } from "recharts";
 import dayjs from "dayjs";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { FileDown, Eye, FileText, X, PlusCircle } from "lucide-react";
+import { FileDown, Eye, FileText, X, PlusCircle, FileSpreadsheet } from "lucide-react";
 import "dayjs/locale/es";
+import EmptyState from "../components/ui/EmptyState";
+import PageHeader from "../components/ui/PageHeader";
+import SectionPanel from "../components/ui/SectionPanel";
+import UiMetricCard from "../components/ui/MetricCard";
 
 dayjs.locale("es");
 
@@ -380,7 +382,54 @@ export default function Reports() {
     URL.revokeObjectURL(url);
   };
 
-  const exportToPDF = () => {
+  const exportToExcel = async () => {
+    const { utils, writeFile } = await import("xlsx");
+    const baseFileName = buildBaseFileName(filter, selectedCategory);
+    const periodLabel = PERIODS.find((item) => item.value === filter)?.label || "Todo";
+
+    const summaryRows = [
+      ["Reporte", "NexoFin"],
+      ["Periodo", periodLabel],
+      ["Categoria", selectedCategory],
+      ["Generado", dayjs().format("DD/MM/YYYY HH:mm")],
+      [],
+      ["Indicador", "Monto"],
+      ["Total ingresos", totals.ingresos],
+      ["Total gastos", totals.gastos],
+      ["Balance", totals.balance],
+      ["Ticket ingreso", averageTicket.incomeAvg],
+      ["Ticket gasto", averageTicket.expenseAvg],
+    ];
+
+    const movementRows = visibleTransactions.map((tx) => ({
+      Fecha: formatAccountingDateTime(tx),
+      Tipo: tx.type,
+      Categoria: tx.category,
+      Metodo: tx.account,
+      Monto: tx.amount,
+      Notas: tx.notes || "",
+    }));
+
+    const trendRows = trendData.map((item) => ({
+      Mes: item.month,
+      Ingresos: item.ingresos,
+      Gastos: item.gastos,
+      Balance: item.balance,
+    }));
+
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, utils.aoa_to_sheet(summaryRows), "Resumen");
+    utils.book_append_sheet(workbook, utils.json_to_sheet(movementRows), "Movimientos");
+    utils.book_append_sheet(workbook, utils.json_to_sheet(trendRows), "Tendencia");
+
+    writeFile(workbook, `${baseFileName}.xlsx`);
+  };
+
+  const exportToPDF = async () => {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
     const doc = new jsPDF();
     doc.text("Reporte financiero - NexoFin", 14, 15);
     doc.setFontSize(10);
@@ -425,13 +474,13 @@ export default function Reports() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Reportes financieros</h1>
-        <p className="text-sm text-gray-500 mt-1">Entiende tus patrones y toma mejores decisiones.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Reportes financieros"
+        description="Entiende tus patrones y toma mejores decisiones."
+      />
 
-      <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4 space-y-4">
+      <SectionPanel className="space-y-4">
         <div className="flex flex-wrap gap-2">
           {PERIODS.map((item) => (
             <button
@@ -477,30 +526,38 @@ export default function Reports() {
           <div className="flex gap-2 justify-start md:justify-end">
             <button
               onClick={exportToPDF}
-              className="flex items-center gap-2 bg-red-500 text-white px-3 py-2 rounded-xl hover:bg-red-600 text-sm"
+              className="flex items-center gap-2 bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm font-medium"
             >
               <FileDown size={16} /> PDF
             </button>
             <button
               onClick={exportToCSV}
-              className="flex items-center gap-2 bg-emerald-500 text-white px-3 py-2 rounded-xl hover:bg-emerald-600 text-sm"
+              className="flex items-center gap-2 bg-emerald-500 text-white px-3 py-2 rounded-lg hover:bg-emerald-600 text-sm font-medium"
             >
               <FileText size={16} /> CSV
             </button>
             <button
+              onClick={exportToExcel}
+              className="flex items-center gap-2 bg-[#0a2b6e] text-white px-3 py-2 rounded-lg hover:bg-[#081f52] text-sm font-medium"
+            >
+              <FileSpreadsheet size={16} /> Excel
+            </button>
+            <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-[#1f67ff] text-white px-3 py-2 rounded-xl hover:bg-[#0a2b6e] text-sm"
+              className="flex items-center gap-2 bg-[#1f67ff] text-white px-3 py-2 rounded-lg hover:bg-[#0a2b6e] text-sm font-medium"
             >
               <Eye size={16} /> Detalle
             </button>
           </div>
         </div>
-      </div>
+      </SectionPanel>
 
       {visibleTransactions.length === 0 ? (
-        <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-10 text-center space-y-3">
-          <p className="text-gray-500">No hay datos para los filtros seleccionados.</p>
-          <div className="flex flex-wrap justify-center gap-2">
+        <EmptyState
+          title="No hay datos para los filtros seleccionados."
+          description="Ajusta los filtros o agrega transacciones para generar un reporte."
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
             <button
               type="button"
               onClick={resetFilters}
@@ -514,21 +571,21 @@ export default function Reports() {
             >
               <PlusCircle size={16} /> Agregar transaccion
             </Link>
-          </div>
-        </div>
+            </div>
+          }
+        />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <MetricCard title="Ingresos" value={totals.ingresos} color="green" />
-            <MetricCard title="Gastos" value={totals.gastos} color="red" />
-            <MetricCard title="Balance" value={totals.balance} color={totals.balance >= 0 ? "green" : "red"} />
-            <MetricCard title="Ticket ingreso" value={averageTicket.incomeAvg} color="blue" />
-            <MetricCard title="Ticket gasto" value={averageTicket.expenseAvg} color="amber" />
+            <UiMetricCard title="Ingresos" value={`S/ ${totals.ingresos.toFixed(2)}`} color="green" />
+            <UiMetricCard title="Gastos" value={`S/ ${totals.gastos.toFixed(2)}`} color="red" />
+            <UiMetricCard title="Balance" value={`S/ ${totals.balance.toFixed(2)}`} color={totals.balance >= 0 ? "green" : "red"} />
+            <UiMetricCard title="Ticket ingreso" value={`S/ ${averageTicket.incomeAvg.toFixed(2)}`} color="blue" />
+            <UiMetricCard title="Ticket gasto" value={`S/ ${averageTicket.expenseAvg.toFixed(2)}`} color="amber" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4 space-y-2">
-              <h3 className="font-semibold">Comparacion vs periodo anterior</h3>
+            <SectionPanel title="Comparacion vs periodo anterior" className="space-y-2">
               {previousTransactions.length === 0 ? (
                 <p className="text-sm text-gray-500">No hay base para comparar en el periodo anterior.</p>
               ) : (
@@ -551,10 +608,9 @@ export default function Reports() {
                   </p>
                 </>
               )}
-            </div>
+            </SectionPanel>
 
-            <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4 space-y-2">
-              <h3 className="font-semibold">Salud financiera</h3>
+            <SectionPanel title="Salud financiera" className="space-y-2">
               <p className={`text-lg font-bold ${health.color}`}>{health.label}</p>
               <p className="text-sm text-gray-600">{health.description}</p>
               {insights.length > 0 && (
@@ -564,7 +620,7 @@ export default function Reports() {
                   ))}
                 </ul>
               )}
-            </div>
+            </SectionPanel>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -709,22 +765,6 @@ export default function Reports() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function MetricCard({ title, value, color }) {
-  const colorMap = {
-    green: "bg-green-100 text-green-800",
-    red: "bg-red-100 text-red-800",
-    blue: "bg-blue-100 text-blue-800",
-    amber: "bg-amber-100 text-amber-800",
-  };
-
-  return (
-    <div className={`rounded-xl p-3 text-center ${colorMap[color] || colorMap.blue}`}>
-      <p className="text-xs font-medium">{title}</p>
-      <p className="text-lg font-bold">S/ {Number(value || 0).toFixed(2)}</p>
     </div>
   );
 }

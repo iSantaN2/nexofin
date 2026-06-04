@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 export default function ConfirmModal({
   show,
@@ -13,6 +14,20 @@ export default function ConfirmModal({
 }) {
   const [visible, setVisible] = useState(false);
   const modalRef = useRef(null);
+
+  const handleConfirm = useCallback(() => {
+    setVisible(false);
+    setTimeout(() => {
+      if (onConfirm) onConfirm();
+    }, 200);
+  }, [onConfirm]);
+
+  const handleCancel = useCallback(() => {
+    setVisible(false);
+    setTimeout(() => {
+      if (onCancel) onCancel();
+    }, 200);
+  }, [onCancel]);
 
   useEffect(() => {
     if (show) {
@@ -31,7 +46,7 @@ export default function ConfirmModal({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [show]);
+  }, [handleCancel, show]);
 
   const handleOutsideClick = (event) => {
     if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -39,39 +54,28 @@ export default function ConfirmModal({
     }
   };
 
-  const handleConfirm = () => {
-    setVisible(false);
-    setTimeout(() => {
-      if (onConfirm) onConfirm();
-    }, 200);
-  };
-
-  const handleCancel = () => {
-    setVisible(false);
-    setTimeout(() => {
-      if (onCancel) onCancel();
-    }, 200);
-  };
-
   const typeStyles = {
     warning: {
-      icon: "⚠️",
+      Icon: AlertTriangle,
       color: "text-red-600",
+      iconBg: "bg-red-50",
       button: "bg-red-600 hover:bg-red-700",
     },
     success: {
-      icon: "✅",
+      Icon: CheckCircle2,
       color: "text-green-600",
+      iconBg: "bg-green-50",
       button: "bg-green-600 hover:bg-green-700",
     },
     info: {
-      icon: "ℹ️",
+      Icon: Info,
       color: "text-[#0a2b6e]",
+      iconBg: "bg-[#e9f2ff]",
       button: "bg-[#0a2b6e] hover:bg-[#081f52]",
     },
   };
 
-  const { icon, color, button } = typeStyles[type] || typeStyles.warning;
+  const { Icon, color, iconBg, button } = typeStyles[type] || typeStyles.warning;
 
   if (!show) return null;
 
@@ -94,7 +98,9 @@ export default function ConfirmModal({
             className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
           >
             <div className="flex flex-col items-center text-center">
-              <span className={`text-5xl mb-3 ${color}`}>{icon}</span>
+              <span className={`mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${iconBg} ${color}`}>
+                <Icon size={30} />
+              </span>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">{title}</h3>
               <p className="text-gray-600 mb-6">{message}</p>
 

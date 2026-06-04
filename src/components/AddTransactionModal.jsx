@@ -1,7 +1,9 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useCallback, useEffect, useState } from "react";
 import { useCategories } from "../context/CategoriesContext";
 import { usePaymentMethods } from "../context/PaymentMethodsContext";
 import toast from "react-hot-toast";
+import { Plus, X } from "lucide-react";
+import Button from "./ui/Button";
 
 export default function AddTransactionModal({
   show,
@@ -33,13 +35,13 @@ export default function AddTransactionModal({
     return `${year}-${month}-${day}`;
   };
 
-  const closeCategoryModal = () => {
+  const closeCategoryModal = useCallback(() => {
     setShowCategoryModal(false);
     setNewCategoryName("");
     setAddingCategory(false);
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setType("expense");
     setCategory("");
     setAmount("");
@@ -47,7 +49,7 @@ export default function AddTransactionModal({
     setAccount("Efectivo");
     setNotes("");
     closeCategoryModal();
-  };
+  }, [closeCategoryModal]);
 
   useEffect(() => {
     if (initialData) {
@@ -61,7 +63,7 @@ export default function AddTransactionModal({
     } else {
       resetForm();
     }
-  }, [initialData, show]);
+  }, [closeCategoryModal, initialData, resetForm, show]);
 
   if (!show) return null;
 
@@ -166,21 +168,40 @@ export default function AddTransactionModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6 animate-fadeIn relative">
-        <h3 className="text-lg font-semibold mb-4 text-center">
-          {initialData ? "Editar transaccion" : "Anadir transaccion"}
-        </h3>
+    <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn relative overflow-hidden border border-[#dbe8ff]">
+        <div className="flex items-start justify-between gap-3 border-b border-[#edf3ff] px-5 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-[#0a2b6e]">
+              {initialData ? "Editar transaccion" : "Anadir transaccion"}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {initialData ? "Actualiza los datos del movimiento." : "Registra un ingreso o gasto del dia."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              onClose();
+            }}
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            aria-label="Cerrar modal"
+            title="Cerrar"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="flex gap-2">
+        <form onSubmit={handleSubmit} className="space-y-3 p-5">
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
             <button
               type="button"
               onClick={() => setType("expense")}
-              className={`flex-1 py-2 rounded-lg ${
+              className={`py-2 rounded-md text-sm font-semibold transition ${
                 type === "expense"
-                  ? "bg-red-100 text-red-600 font-semibold"
-                  : "bg-gray-100"
+                  ? "bg-white text-red-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
               }`}
             >
               Gasto
@@ -188,10 +209,10 @@ export default function AddTransactionModal({
             <button
               type="button"
               onClick={() => setType("income")}
-              className={`flex-1 py-2 rounded-lg ${
+              className={`py-2 rounded-md text-sm font-semibold transition ${
                 type === "income"
-                  ? "bg-green-100 text-green-600 font-semibold"
-                  : "bg-gray-100"
+                  ? "bg-white text-emerald-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
               }`}
             >
               Ingreso
@@ -202,7 +223,7 @@ export default function AddTransactionModal({
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full border rounded-lg p-2"
+              className="w-full border rounded-lg p-2.5"
               required
             >
               <option value="">Selecciona una categoria</option>
@@ -215,9 +236,11 @@ export default function AddTransactionModal({
             <button
               type="button"
               onClick={handleOpenAddCategory}
-              className="px-3 py-2 rounded-lg bg-[#1f67ff] text-white hover:bg-[#0a2b6e]"
+              className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-[#1f67ff] text-white hover:bg-[#0a2b6e]"
+              title="Nueva categoria"
+              aria-label="Nueva categoria"
             >
-              +
+              <Plus size={18} />
             </button>
           </div>
 
@@ -228,7 +251,7 @@ export default function AddTransactionModal({
             onChange={(e) => setAmount(e.target.value)}
             min="0.01"
             step="0.01"
-            className="w-full border rounded-lg p-2"
+            className="w-full border rounded-lg p-2.5 text-lg font-semibold"
             required
           />
 
@@ -236,13 +259,13 @@ export default function AddTransactionModal({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full border rounded-lg p-2"
+            className="w-full border rounded-lg p-2.5"
           />
 
           <select
             value={account}
             onChange={(e) => setAccount(e.target.value)}
-            className="w-full border rounded-lg p-2"
+            className="w-full border rounded-lg p-2.5"
           >
             {methods.map((m) => (
               <option key={m.id || m.name} value={m.name}>
@@ -255,60 +278,63 @@ export default function AddTransactionModal({
             placeholder="Notas (opcional)"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full border rounded-lg p-2 resize-none"
+            className="w-full border rounded-lg p-2.5 resize-none"
             rows={3}
           />
 
-          <div className="flex justify-end gap-2 mt-4">
-            <button
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button
               type="button"
+              variant="neutral"
               onClick={() => {
                 resetForm();
                 onClose();
               }}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-4 py-2 bg-[#0a2b6e] text-white hover:bg-[#081f52] rounded-lg"
+              variant={type === "income" ? "success" : "primary"}
             >
               {initialData ? "Guardar cambios" : "Guardar"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
 
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm p-5">
-            <h4 className="text-base font-semibold mb-3">Nueva categoria</h4>
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5 border border-[#dbe8ff]">
+            <h4 className="text-base font-semibold text-[#0a2b6e] mb-1">Nueva categoria</h4>
+            <p className="text-sm text-slate-500 mb-3">
+              Se creara como {type === "income" ? "categoria de ingreso" : "categoria de gasto"}.
+            </p>
             <input
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Escribe el nombre"
-              className="w-full border rounded-lg p-2 mb-4"
+              className="w-full border rounded-lg p-2.5 mb-4"
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
+                variant="neutral"
                 onClick={closeCategoryModal}
                 disabled={addingCategory}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg disabled:opacity-60"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
                 onClick={handleConfirmAddCategory}
                 disabled={addingCategory || !newCategoryName.trim()}
-                className="px-4 py-2 bg-[#0a2b6e] text-white hover:bg-[#081f52] rounded-lg disabled:opacity-60"
               >
                 {addingCategory ? "Agregando..." : "Agregar"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -316,3 +342,4 @@ export default function AddTransactionModal({
     </div>
   );
 }
+

@@ -7,10 +7,22 @@ import AddTransactionModal from "../components/AddTransactionModal";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+import { AlertTriangle, Lightbulb, Target, TrendingUp } from "lucide-react";
+import CategoryIcon from "../components/CategoryIcon";
+import EmptyState from "../components/ui/EmptyState";
+import PageHeader from "../components/ui/PageHeader";
+import SectionPanel from "../components/ui/SectionPanel";
 import {
+  buildFinancialRecommendation,
+  buildMonthlyInsight,
   calculateComparison,
   calculateTotals,
+  getCriticalBudget,
+  getCriticalBudgetProjection,
   getBudgetStatus,
+  getSavingsRate,
+  getTopExpenseCategory,
+  getUnusualExpenseCategories,
   matchesTypeFilter,
   isIncomeTransaction,
 } from "../utils/finance";
@@ -20,6 +32,12 @@ const YEAR_MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: APP_TIME_ZONE,
   year: "numeric",
   month: "2-digit",
+});
+const DAY_KEY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
 });
 
 const toDate = (value) => {
@@ -59,6 +77,12 @@ const getYearMonthKey = (value) => {
   return `${year}-${month}`;
 };
 
+const getDayKey = (value) => {
+  const d = toDate(value);
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return DAY_KEY_FORMATTER.format(d);
+};
+
 const getPreviousMonthKey = (yearMonth) => {
   if (!yearMonth) return null;
   const [year, month] = yearMonth.split("-").map(Number);
@@ -82,16 +106,29 @@ const formatMonthLabel = (yearMonth) => {
   return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
-const normalizeText = (text = "") =>
-  text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+const getMonthProjectionDates = (yearMonth) => {
+  const [year, month] = (yearMonth || "").split("-").map(Number);
+  if (!year || !month) {
+    const now = new Date();
+    return {
+      currentDay: now.getDate(),
+      daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
+    };
+  }
+
+  const now = new Date();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
+
+  return {
+    currentDay: isCurrentMonth ? now.getDate() : daysInMonth,
+    daysInMonth,
+  };
+};
 
 export default function Dashboard() {
   const { transactions, addTransaction } = useContext(TransactionsContext);
-  const { budgets } = useContext(AppContext);
+  const { budgets, notificationSettings, createNotification } = useContext(AppContext);
   const { user } = useAuth();
   const currentMonthKey = getYearMonthKey(new Date());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -116,29 +153,6 @@ export default function Dashboard() {
     [previousMonthKey]
   );
 
-  const categoryIcons = {
-    comida: "\u{1F355}",
-    "comida rapida": "\u{1F354}",
-    supermercado: "\u{1F6D2}",
-    transporte: "\u{1F697}",
-    gasolina: "\u26FD",
-    entretenimiento: "\u{1F3AE}",
-    salario: "\u{1F4B5}",
-    ingresos: "\u{1F4B0}",
-    educacion: "\u{1F393}",
-    salud: "\u{1F48A}",
-    hogar: "\u{1F3E0}",
-    compras: "\u{1F6CD}\uFE0F",
-    viajes: "\u2708\uFE0F",
-    pasaje: "\u{1F4A1}",
-    otros: "\u{1F4A1}",
-  };
-
-  const getCategoryIcon = (category = "") => {
-    const key = normalizeText(category);
-    return categoryIcons[key] || "\u{1F4A1}";
-  };
-
   const filteredTransactions = useMemo(() => {
     let filtered = transactions.filter(
       (t) => getYearMonthKey(t.date) === selectedMonth
@@ -153,9 +167,19 @@ export default function Dashboard() {
     });
   }, [transactions, filter, selectedMonth]);
 
+  const selectedMonthTransactions = useMemo(
+    () => transactions.filter((t) => getYearMonthKey(t.date) === selectedMonth),
+    [transactions, selectedMonth]
+  );
+
   const { ingresos, gastos, balance } = useMemo(
     () => calculateTotals(filteredTransactions),
     [filteredTransactions]
+  );
+
+  const selectedMonthTotals = useMemo(
+    () => calculateTotals(selectedMonthTransactions),
+    [selectedMonthTransactions]
   );
 
   const previousMonthTransactions = useMemo(() => {
@@ -164,6 +188,11 @@ export default function Dashboard() {
       .filter((t) => getYearMonthKey(t.date) === previousMonthKey)
       .filter((t) => matchesTypeFilter(t, filter));
   }, [transactions, previousMonthKey, filter]);
+
+  const previousMonthAllTransactions = useMemo(() => {
+    if (!previousMonthKey) return [];
+    return transactions.filter((t) => getYearMonthKey(t.date) === previousMonthKey);
+  }, [transactions, previousMonthKey]);
 
   const monthExpenseByCategory = useMemo(() => {
     const totals = {};
@@ -208,6 +237,11 @@ export default function Dashboard() {
     [previousMonthTransactions]
   );
 
+  const previousAllTotals = useMemo(
+    () => calculateTotals(previousMonthAllTransactions),
+    [previousMonthAllTransactions]
+  );
+
   const monthComparison = useMemo(() => {
     return calculateComparison(
       { ingresos, gastos, balance },
@@ -216,6 +250,70 @@ export default function Dashboard() {
       previousMonthTransactions.length > 0
     );
   }, [ingresos, gastos, balance, filter, previousTotals, previousMonthTransactions]);
+
+  const topExpenseCategory = useMemo(
+    () => getTopExpenseCategory(selectedMonthTransactions),
+    [selectedMonthTransactions]
+  );
+
+  const criticalBudget = useMemo(
+    () => getCriticalBudget(budgetStatusItems),
+    [budgetStatusItems]
+  );
+
+  const monthProjectionDates = useMemo(
+    () => getMonthProjectionDates(selectedMonth),
+    [selectedMonth]
+  );
+
+  const criticalBudgetProjection = useMemo(
+    () => getCriticalBudgetProjection(budgetStatusItems, monthProjectionDates),
+    [budgetStatusItems, monthProjectionDates]
+  );
+
+  const savingsRate = useMemo(
+    () => getSavingsRate(selectedMonthTotals),
+    [selectedMonthTotals]
+  );
+
+  const monthlyInsight = useMemo(
+    () =>
+      buildMonthlyInsight({
+        totals: selectedMonthTotals,
+        previousTotals: previousAllTotals,
+        hasPreviousData: previousMonthAllTransactions.length > 0,
+        topExpenseCategory,
+        criticalBudget,
+      }),
+    [
+      criticalBudget,
+      previousAllTotals,
+      previousMonthAllTransactions.length,
+      selectedMonthTotals,
+      topExpenseCategory,
+    ]
+  );
+
+  const financialRecommendation = useMemo(
+    () =>
+      buildFinancialRecommendation({
+        totals: selectedMonthTotals,
+        topExpenseCategory,
+        criticalBudget,
+      }),
+    [criticalBudget, selectedMonthTotals, topExpenseCategory]
+  );
+
+  const unusualExpenses = useMemo(
+    () =>
+      getUnusualExpenseCategories(selectedMonthTransactions, previousMonthAllTransactions, {
+        minIncreasePercent: 25,
+        minIncreaseAmount: 20,
+      }),
+    [previousMonthAllTransactions, selectedMonthTransactions]
+  );
+
+  const mainUnusualExpense = unusualExpenses[0] || null;
 
   const data = useMemo(() => {
     const categorias = {};
@@ -301,13 +399,14 @@ export default function Dashboard() {
     if (!user?.uid) return;
     if (selectedMonth !== currentMonthKey) return;
     if (!budgetStatusItems.length) return;
+    if (!notificationSettings?.budget80Enabled && !notificationSettings?.budget100Enabled) return;
 
     const storageKey = `nexofin_budget_alerts_${user.uid}_${selectedMonth}`;
     let triggered = [];
 
     try {
       triggered = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    } catch (_error) {
+    } catch {
       triggered = [];
     }
 
@@ -318,14 +417,43 @@ export default function Dashboard() {
       const key80 = `${item.category}_80`;
       const key100 = `${item.category}_100`;
 
-      if (item.progress >= 100 && !triggeredSet.has(key100)) {
+      if (
+        item.progress >= 100 &&
+        notificationSettings?.budget100Enabled &&
+        !triggeredSet.has(key100)
+      ) {
         toast.error(
           `Meta excedida en ${item.category}: gastaste S/ ${item.spent.toFixed(2)} de S/ ${item.limit.toFixed(2)}`
         );
+        createNotification({
+          type: "budget_limit",
+          title: `Meta excedida: ${item.category}`,
+          message: `Gastaste S/ ${item.spent.toFixed(2)} de S/ ${item.limit.toFixed(2)} en ${item.category}.`,
+          recommendation: `Revisa los gastos de ${item.category}. Para volver al limite necesitas reducir S/ ${Math.abs(item.remaining).toFixed(2)} o ajustar tu meta mensual.`,
+          actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
+          severity: "danger",
+          sourceKey: `budget-${selectedMonth}-${item.category}-100`,
+          monthKey: selectedMonth,
+        });
         triggeredSet.add(key100);
+        triggeredSet.add(key80);
         hasChanges = true;
-      } else if (item.progress >= 80 && !triggeredSet.has(key80)) {
+      } else if (
+        item.progress >= 80 &&
+        notificationSettings?.budget80Enabled &&
+        !triggeredSet.has(key80)
+      ) {
         toast(`Alerta: ${item.category} ya va en ${item.progress.toFixed(1)}% de su meta mensual.`);
+        createNotification({
+          type: "budget_warning",
+          title: `Meta al ${item.progress.toFixed(1)}%`,
+          message: `${item.category} ya va en S/ ${item.spent.toFixed(2)} de S/ ${item.limit.toFixed(2)}.`,
+          recommendation: `Te quedan S/ ${Math.max(0, item.remaining).toFixed(2)} para el resto del mes. Mantén esta categoria bajo control antes de llegar al 100%.`,
+          actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
+          severity: "warning",
+          sourceKey: `budget-${selectedMonth}-${item.category}-80`,
+          monthKey: selectedMonth,
+        });
         triggeredSet.add(key80);
         hasChanges = true;
       }
@@ -334,7 +462,85 @@ export default function Dashboard() {
     if (hasChanges) {
       localStorage.setItem(storageKey, JSON.stringify([...triggeredSet]));
     }
-  }, [budgetStatusItems, currentMonthKey, selectedMonth, user?.uid]);
+  }, [
+    budgetStatusItems,
+    createNotification,
+    currentMonthKey,
+    notificationSettings?.budget100Enabled,
+    notificationSettings?.budget80Enabled,
+    selectedMonth,
+    user?.uid,
+  ]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (!notificationSettings?.dailyReminderEnabled) return;
+
+    const todayKey = getDayKey(new Date());
+    if (!todayKey) return;
+
+    const storageKey = `nexofin_daily_reminder_${user.uid}_${todayKey}`;
+    const alreadyShown = localStorage.getItem(storageKey) === "1";
+    if (alreadyShown) return;
+
+    const hasMovementToday = transactions.some((tx) => getDayKey(tx.date) === todayKey);
+    if (!hasMovementToday) {
+      toast("Recordatorio: hoy aun no registras movimientos.");
+      createNotification({
+        type: "daily_reminder",
+        title: "Recordatorio diario",
+        message: "Hoy aun no registras movimientos. Agrega tus ingresos o gastos para mantener tu control al dia.",
+        recommendation: "Registra al menos un movimiento hoy para mantener tu historial financiero actualizado.",
+        actionPath: "/transactions",
+        severity: "info",
+        sourceKey: `daily-reminder-${todayKey}`,
+        monthKey: currentMonthKey,
+      });
+    }
+    localStorage.setItem(storageKey, "1");
+  }, [
+    createNotification,
+    currentMonthKey,
+    notificationSettings?.dailyReminderEnabled,
+    transactions,
+    user?.uid,
+  ]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (selectedMonth !== currentMonthKey) return;
+    if (!mainUnusualExpense) return;
+
+    createNotification({
+      type: "unusual_expense",
+      title: `Gasto inusual: ${mainUnusualExpense.category}`,
+      message: `Esta categoria subio S/ ${mainUnusualExpense.increaseAmount.toFixed(2)} frente al mes anterior.`,
+      recommendation: `Revisa las transacciones de ${mainUnusualExpense.category} y confirma si fue un gasto puntual o un nuevo patron.`,
+      actionPath: `/transactions?category=${encodeURIComponent(mainUnusualExpense.category)}`,
+      severity: "warning",
+      sourceKey: `unusual-${selectedMonth}-${mainUnusualExpense.category}`,
+      monthKey: selectedMonth,
+    });
+  }, [createNotification, currentMonthKey, mainUnusualExpense, selectedMonth, user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (selectedMonth !== currentMonthKey) return;
+    if (!criticalBudgetProjection) return;
+
+    createNotification({
+      type: "budget_projection",
+      title: `Proyeccion de meta: ${criticalBudgetProjection.category}`,
+      message: criticalBudgetProjection.estimatedExceedDay
+        ? `Con tu ritmo actual podrias superar la meta cerca del dia ${criticalBudgetProjection.estimatedExceedDay}.`
+        : `Con tu ritmo actual podrias cerrar en S/ ${criticalBudgetProjection.projectedSpend.toFixed(2)}.`,
+      recommendation: `Reduce el ritmo de gasto en ${criticalBudgetProjection.category} o ajusta la meta si este mes tiene gastos excepcionales.`,
+      actionPath: `/transactions?category=${encodeURIComponent(criticalBudgetProjection.category)}`,
+      severity: "warning",
+      sourceKey: `projection-${selectedMonth}-${criticalBudgetProjection.category}`,
+      monthKey: selectedMonth,
+    });
+  }, [createNotification, criticalBudgetProjection, currentMonthKey, selectedMonth, user?.uid]);
 
   return (
     <div className="flex flex-col gap-6 pb-20 relative">
@@ -344,16 +550,18 @@ export default function Dashboard() {
         </div>
       )}
 
-      <h1 className="text-2xl font-semibold">Hola</h1>
-      <p className="text-gray-500 -mt-3">
-        {filter === "all"
-          ? "Resumen del mes seleccionado"
-          : filter === "income"
-          ? "Solo ingresos del mes seleccionado"
-          : "Solo gastos del mes seleccionado"}
-      </p>
+      <PageHeader
+        title="Inicio"
+        description={
+          filter === "all"
+            ? "Resumen del mes seleccionado"
+            : filter === "income"
+            ? "Solo ingresos del mes seleccionado"
+            : "Solo gastos del mes seleccionado"
+        }
+      />
 
-      <div className="bg-white shadow rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <SectionPanel className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex flex-col">
           <label className="text-sm text-gray-600 mb-1">Mes</label>
           <input
@@ -379,10 +587,10 @@ export default function Dashboard() {
             Mes actual
           </button>
         </div>
-      </div>
+      </SectionPanel>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white shadow rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 h-full">
+        <SectionPanel className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 h-full">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">S/ {balance.toFixed(2)}</h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -403,9 +611,9 @@ export default function Dashboard() {
               </p>
             </div>
           )}
-        </div>
+        </SectionPanel>
 
-        <div className="bg-white shadow rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 h-full">
+        <SectionPanel className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 h-full">
           <p className="text-sm text-gray-600">{comparisonSummaryText}</p>
           {monthComparison.hasPreviousData ? (
             <div className="text-left sm:text-right">
@@ -417,8 +625,115 @@ export default function Dashboard() {
           ) : (
             <p className="text-sm text-gray-500">Aun no hay base de comparacion.</p>
           )}
-        </div>
+        </SectionPanel>
       </div>
+
+      <SectionPanel title="Inteligencia financiera">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-3">
+          <div className="rounded-lg border border-[#dbe8ff] bg-[#f8fbff] p-4">
+            <div className="flex items-center gap-2 text-[#0a2b6e]">
+              <Lightbulb className="w-4 h-4" />
+              <p className="text-sm font-semibold">Insight del mes</p>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">{monthlyInsight}</p>
+          </div>
+
+          <div className="rounded-lg border border-red-100 bg-red-50 p-4">
+            <div className="flex items-center gap-2 text-red-700">
+              <TrendingUp className="w-4 h-4" />
+              <p className="text-sm font-semibold">Mayor gasto</p>
+            </div>
+            {topExpenseCategory ? (
+              <>
+                <p className="mt-2 text-lg font-bold text-red-700">
+                  S/ {topExpenseCategory.amount.toFixed(2)}
+                </p>
+                <p className="text-sm text-slate-600">{topExpenseCategory.category}</p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">Sin gastos registrados este mes.</p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 text-amber-700">
+              <Target className="w-4 h-4" />
+              <p className="text-sm font-semibold">Meta critica</p>
+            </div>
+            {criticalBudget ? (
+              <>
+                <p className={`mt-2 text-lg font-bold ${criticalBudget.status.textColor}`}>
+                  {criticalBudget.progress.toFixed(1)}%
+                </p>
+                <p className="text-sm text-slate-600">{criticalBudget.category}</p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">Aun no hay metas para evaluar.</p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <AlertTriangle className="w-4 h-4" />
+              <p className="text-sm font-semibold">Recomendacion</p>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">{financialRecommendation}</p>
+            {savingsRate !== null ? (
+              <p className="mt-2 text-xs font-medium text-emerald-700">
+                Ahorro estimado: {savingsRate.toFixed(1)}%
+              </p>
+            ) : null}
+          </div>
+
+          <div className="rounded-lg border border-orange-100 bg-orange-50 p-4">
+            <div className="flex items-center gap-2 text-orange-700">
+              <AlertTriangle className="w-4 h-4" />
+              <p className="text-sm font-semibold">Gasto inusual</p>
+            </div>
+            {mainUnusualExpense ? (
+              <>
+                <p className="mt-2 text-sm font-semibold text-slate-800">
+                  {mainUnusualExpense.category}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Subio S/ {mainUnusualExpense.increaseAmount.toFixed(2)}
+                  {mainUnusualExpense.increasePercent !== null
+                    ? ` (${mainUnusualExpense.increasePercent.toFixed(1)}%)`
+                    : " respecto al mes anterior"}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">
+                No se detectan aumentos fuertes vs el mes anterior.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-sky-100 bg-sky-50 p-4">
+            <div className="flex items-center gap-2 text-sky-700">
+              <TrendingUp className="w-4 h-4" />
+              <p className="text-sm font-semibold">Proyeccion de meta</p>
+            </div>
+            {criticalBudgetProjection ? (
+              <>
+                <p className="mt-2 text-sm font-semibold text-slate-800">
+                  {criticalBudgetProjection.category}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Podrias cerrar en S/ {criticalBudgetProjection.projectedSpend.toFixed(2)}
+                  {criticalBudgetProjection.estimatedExceedDay
+                    ? ` y superar la meta cerca del dia ${criticalBudgetProjection.estimatedExceedDay}.`
+                    : "."}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">
+                Tus metas no proyectan exceso con el ritmo actual.
+              </p>
+            )}
+          </div>
+        </div>
+      </SectionPanel>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white shadow rounded-2xl p-6 h-full flex flex-col">
@@ -489,15 +804,14 @@ export default function Dashboard() {
           <div className="flex-1">
             <AnimatePresence mode="wait">
             {data.length === 0 ? (
-              <motion.p
+              <motion.div
                 key="no-data"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-gray-400 text-center py-10"
               >
-                No hay datos para mostrar.
-              </motion.p>
+                <EmptyState title="No hay datos para mostrar." />
+              </motion.div>
             ) : (
               <motion.div
                 key={filter}
@@ -507,8 +821,8 @@ export default function Dashboard() {
                 transition={{ duration: 0.35 }}
                 className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 h-full"
               >
-                <div className="flex justify-center w-full xl:w-1/2 h-[260px] xl:h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="flex justify-center w-full xl:w-1/2 h-[260px] xl:h-[240px] min-w-0 min-h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={240} minHeight={240}>
                     <PieChart>
                       <Pie
                         data={data}
@@ -598,7 +912,7 @@ export default function Dashboard() {
                   className="bg-gray-50 rounded-xl shadow-sm border border-gray-100 p-4 flex justify-between items-center hover:shadow-md transition-all"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">{getCategoryIcon(t.category)}</span>
+                    <CategoryIcon category={t.category} type={t.type} />
                     <div>
                       <p className="font-semibold text-gray-800">
                         {t.category || "Sin categoria"}
@@ -656,6 +970,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
 
 
 

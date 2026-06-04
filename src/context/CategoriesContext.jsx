@@ -18,18 +18,18 @@ import { normalizeCategoryType, normalizeText } from "../utils/validation";
 const CategoriesContext = createContext();
 export const useCategories = () => useContext(CategoriesContext);
 
+const DEFAULT_CATEGORIES = [
+  { name: "Comida", type: "gasto" },
+  { name: "Gasolina", type: "gasto" },
+  { name: "Pasajes", type: "gasto" },
+  { name: "Ocio", type: "gasto" },
+  { name: "Salario", type: "ingreso" },
+];
+
 export const CategoriesProvider = ({ children }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState([]);
   const [initialized, setInitialized] = useState(false);
-
-  const defaultCategories = [
-    { name: "Comida", type: "gasto" },
-    { name: "Gasolina", type: "gasto" },
-    { name: "Pasajes", type: "gasto" },
-    { name: "Ocio", type: "gasto" },
-    { name: "Salario", type: "ingreso" },
-  ];
 
   useEffect(() => {
     if (!user?.uid) {
@@ -48,7 +48,7 @@ export const CategoriesProvider = ({ children }) => {
         setInitialized(true);
         const existing = await getDocs(q);
         if (existing.empty) {
-          for (const cat of defaultCategories) {
+          for (const cat of DEFAULT_CATEGORIES) {
             await addDoc(collection(db, "categories"), { ...cat, uid: user.uid });
           }
           toast.success("Categorias iniciales anadidas");

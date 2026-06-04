@@ -67,3 +67,31 @@ Para habilitar E2E con cuenta real en GitHub, agrega estos `Secrets`:
 - `E2E_REGISTER_ENABLED` (opcional)
 - `E2E_REGISTER_PASSWORD` (opcional)
 - `E2E_REGISTER_DOMAIN` (opcional)
+
+### Activar login real en CI (paso a paso)
+
+1. Ve a `GitHub > Repo > Settings > Secrets and variables > Actions`.
+2. Crea/edita:
+   - `E2E_AUTH_ENABLED = true`
+   - `E2E_EMAIL = tu_correo_de_prueba`
+   - `E2E_PASSWORD = tu_password_de_prueba`
+3. Ve a `Actions > NexoFin CI`.
+4. Clic en `Run workflow` y ejecuta en `main`.
+5. Verifica que `Run E2E tests` pase (si la cuenta existe y esta verificada).
+
+## Notificaciones financieras (Fase 3)
+
+Ahora puedes configurarlas en:
+
+- `Ajustes > Notificaciones`
+
+Opciones disponibles:
+
+- `Alerta al 80% de meta`
+- `Alerta al 100% de meta`
+- `Recordatorio diario` (opcional)
+
+Comportamiento:
+
+- Las alertas 80%/100% aparecen en `Inicio` segun el avance de tus metas del mes actual.
+- El recordatorio diario aparece una vez al dia si aun no registraste movimientos.

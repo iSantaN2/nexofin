@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   EmailAuthProvider,
   createUserWithEmailAndPassword,
@@ -57,6 +57,8 @@ async function purgeUserData(uid) {
   await deleteDocumentsByUid("categories", uid);
   await deleteDocumentsByUid("paymentMethods", uid);
   await deleteDocumentsByUid("budgets", uid);
+  await deleteDocumentsByUid("notifications", uid);
+  await deleteDoc(doc(db, "notificationSettings", uid));
   await deleteDoc(doc(db, "users", uid));
 }
 
@@ -286,27 +288,24 @@ export function AuthProvider({ children }) {
     await refreshUserProfile();
   };
 
-  const value = useMemo(
-    () => ({
-      user,
-      userProfile,
-      loadingAuth,
-      loadingProfile,
-      register,
-      login,
-      resetPassword,
-      logout,
-      resendVerificationEmail,
-      refreshCurrentUser,
-      refreshUserProfile,
-      completeOnboarding,
-      updateUserDisplayName,
-      updateUserEmail,
-      updateUserPassword,
-      deleteUserAccount,
-    }),
-    [user, userProfile, loadingAuth, loadingProfile]
-  );
+  const value = {
+    user,
+    userProfile,
+    loadingAuth,
+    loadingProfile,
+    register,
+    login,
+    resetPassword,
+    logout,
+    resendVerificationEmail,
+    refreshCurrentUser,
+    refreshUserProfile,
+    completeOnboarding,
+    updateUserDisplayName,
+    updateUserEmail,
+    updateUserPassword,
+    deleteUserAccount,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
