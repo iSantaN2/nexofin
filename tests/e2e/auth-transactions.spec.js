@@ -74,3 +74,39 @@ test("login + crear + editar + eliminar transaccion", async ({ page }) => {
   await expect(page.getByText("Transaccion eliminada correctamente")).toBeVisible();
   await expect(page.getByText("No hay transacciones para mostrar.")).toBeVisible();
 });
+
+test("login + crear + eliminar meta con categoria temporal", async ({ page }) => {
+  const uniqueTag = Date.now();
+  const categoryName = `E2E Meta ${uniqueTag}`;
+
+  await login(page);
+  await handlePostLoginRedirects(page);
+  await expect(page).toHaveURL(/\/$/);
+
+  await page.getByTestId("open-transaction-modal").click();
+  await page.getByTitle("Nueva categoria").click();
+  await page.getByPlaceholder("Escribe el nombre").fill(categoryName);
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await expect(page.getByText(`Categoria "${categoryName}" anadida correctamente.`)).toBeVisible();
+  await page.getByLabel("Cerrar modal").click();
+
+  await page.getByRole("link", { name: "Metas" }).click();
+  await expect(page).toHaveURL(/\/budgets$/);
+  await page.getByTestId("budget-category-select").selectOption({ label: categoryName });
+  await page.getByTestId("budget-amount-input").fill("999");
+  await page.getByTestId("save-budget-button").click();
+  await expect(page.getByText("Meta guardada correctamente")).toBeVisible();
+
+  const budgetCard = page.getByTestId("budget-card").filter({ hasText: categoryName });
+  await expect(budgetCard).toBeVisible();
+  await budgetCard.getByTitle("Eliminar meta").click();
+  await expect(page.getByText("Meta eliminada")).toBeVisible();
+  await expect(budgetCard).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Ajustes" }).click();
+  await page.getByRole("button", { name: "Categorias" }).click();
+  const categoryRow = page.getByTestId("category-row").filter({ hasText: categoryName });
+  await expect(categoryRow).toBeVisible();
+  await categoryRow.getByTitle("Eliminar").click();
+  await expect(categoryRow).toHaveCount(0);
+});

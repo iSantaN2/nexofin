@@ -6,7 +6,7 @@
 - Correccion de errores de codificacion/textos y UX de errores.
 - Checklist manual de QA: registro, login, CRUD, filtros, reportes, calendarios.
 
-Estado: `en progreso`
+Estado: `completada`
 
 ## Fase 2 (Calidad y Rendimiento)
 - Tests unitarios para calculos y filtros.
@@ -14,7 +14,7 @@ Estado: `en progreso`
 - Optimizacion de bundle y carga por rutas (`lazy loading`).
 - Paginacion real en Firestore donde aplique.
 
-Estado: `pendiente`
+Estado: `en progreso`
 
 ## Fase 3 (Producto Pro)
 - Notificaciones y recordatorios financieros.

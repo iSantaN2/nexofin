@@ -157,11 +157,14 @@ export default function Notifications() {
   const {
     notifications,
     notificationsLoading,
+    loadingMoreNotifications,
+    hasMoreNotifications,
     unreadNotificationsCount,
     markNotificationRead,
     markAllNotificationsRead,
     resolveNotification,
     deleteNotification,
+    loadMoreNotifications,
   } = useContext(AppContext);
   const [filter, setFilter] = useState("all");
 
@@ -432,6 +435,19 @@ export default function Notifications() {
                 })}
               </div>
             ))}
+
+            {hasMoreNotifications ? (
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="soft"
+                  onClick={loadMoreNotifications}
+                  disabled={loadingMoreNotifications}
+                >
+                  {loadingMoreNotifications ? "Cargando historial..." : "Cargar mas alertas"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
       </SectionPanel>

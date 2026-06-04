@@ -128,6 +128,7 @@ function AppShell() {
           <button
             type="button"
             onClick={handleLogout}
+            data-testid="logout-button"
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#0a2b6e] hover:bg-[#081f52] text-white"
           >
             <LogOut className="w-4 h-4" />

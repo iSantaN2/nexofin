@@ -10,6 +10,13 @@ import CategoryIcon from "../components/CategoryIcon";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
+import {
+  calculateTransactionTotals,
+  filterTransactions,
+  isIncomeTransaction,
+  sortTransactions,
+  toTransactionDate,
+} from "../utils/transactions";
 
 const APP_TIME_ZONE = "America/Lima";
 const ITEMS_PER_PAGE = 10;
@@ -21,26 +28,8 @@ const SORT_OPTIONS = [
   { value: "amount_asc", label: "Menor monto" },
 ];
 
-function toDate(value) {
-  if (!value) return null;
-  if (value?.seconds) return new Date(value.seconds * 1000);
-  return new Date(value);
-}
-
-function isIncome(type) {
-  return type === "Ingreso" || type === "income";
-}
-
-function normalizeText(text = "") {
-  return String(text)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
 function formatDatePE(value) {
-  const date = toDate(value);
+  const date = toTransactionDate(value);
   if (!date || Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("es-PE", {
     day: "2-digit",
@@ -51,25 +40,13 @@ function formatDatePE(value) {
 }
 
 function formatTimePE(value) {
-  const date = toDate(value);
+  const date = toTransactionDate(value);
   if (!date || Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString("es-PE", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: APP_TIME_ZONE,
   });
-}
-
-function parseStartDate(dateString) {
-  if (!dateString) return null;
-  const parsed = new Date(`${dateString}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function parseEndDate(dateString) {
-  if (!dateString) return null;
-  const parsed = new Date(`${dateString}T23:59:59.999`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export default function Transactions() {
@@ -116,62 +93,24 @@ export default function Transactions() {
   }, [transactions]);
 
   const filteredTransactions = useMemo(() => {
-    const start = parseStartDate(startDate);
-    const end = parseEndDate(endDate);
-    const query = normalizeText(searchQuery);
-
-    return transactions.filter((item) => {
-      const txDate = toDate(item.date);
-      if (!txDate || Number.isNaN(txDate.getTime())) return false;
-
-      const matchStart = start ? txDate >= start : true;
-      const matchEnd = end ? txDate <= end : true;
-
-      const matchType =
-        typeFilter === "all" ||
-        (typeFilter === "income" && isIncome(item.type)) ||
-        (typeFilter === "expense" && !isIncome(item.type));
-
-      const matchMethod = methodFilter === "all" || item.account === methodFilter;
-      const matchCategory = categoryFilter === "all" || item.category === categoryFilter;
-
-      const haystack = normalizeText(
-        `${item.category || ""} ${item.account || ""} ${item.notes || ""} ${item.type || ""} ${
-          item.amount || ""
-        }`
-      );
-      const matchQuery = query ? haystack.includes(query) : true;
-
-      return matchStart && matchEnd && matchType && matchMethod && matchCategory && matchQuery;
+    return filterTransactions(transactions, {
+      startDate,
+      endDate,
+      typeFilter,
+      methodFilter,
+      categoryFilter,
+      searchQuery,
     });
   }, [transactions, startDate, endDate, typeFilter, methodFilter, categoryFilter, searchQuery]);
 
   const sortedTransactions = useMemo(() => {
-    return filteredTransactions.slice().sort((a, b) => {
-      const dateA = toDate(a.createdAt || a.date) || new Date(0);
-      const dateB = toDate(b.createdAt || b.date) || new Date(0);
-      const amountA = Number(a.amount) || 0;
-      const amountB = Number(b.amount) || 0;
-
-      if (sortBy === "oldest") return dateA - dateB;
-      if (sortBy === "amount_desc") return amountB - amountA;
-      if (sortBy === "amount_asc") return amountA - amountB;
-      return dateB - dateA;
-    });
+    return sortTransactions(filteredTransactions, sortBy);
   }, [filteredTransactions, sortBy]);
 
-  const totals = useMemo(() => {
-    let ingresos = 0;
-    let gastos = 0;
-
-    filteredTransactions.forEach((item) => {
-      const value = Number(item.amount) || 0;
-      if (isIncome(item.type)) ingresos += value;
-      else gastos += value;
-    });
-
-    return { ingresos, gastos, balance: ingresos - gastos };
-  }, [filteredTransactions]);
+  const totals = useMemo(
+    () => calculateTransactionTotals(filteredTransactions),
+    [filteredTransactions]
+  );
 
   const totalPages = Math.max(1, Math.ceil(sortedTransactions.length / ITEMS_PER_PAGE));
   const currentTransactions = sortedTransactions.slice(
@@ -455,7 +394,7 @@ export default function Transactions() {
               animate={{ opacity: 1 }}
             >
               {currentTransactions.map((transaction) => {
-                const income = isIncome(transaction.type);
+                const income = isIncomeTransaction(transaction.type);
                 return (
                   <motion.li
                     key={transaction.id}

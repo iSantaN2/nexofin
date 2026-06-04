@@ -697,7 +697,7 @@ function CategoryList({
       ) : (
         <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
           {items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between p-3 gap-3">
+            <li key={item.id} className="flex items-center justify-between p-3 gap-3" data-testid="category-row">
               {editingId === item.id ? (
                 <div className="flex-1 flex flex-col md:flex-row gap-2">
                   <input

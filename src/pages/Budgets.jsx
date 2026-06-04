@@ -121,7 +121,10 @@ function BudgetCard({ item, onDelete }) {
   const progressSafe = Math.max(0, Math.min(item.progress, 100));
 
   return (
-    <div className={`rounded-2xl border p-4 ${item.status.bg} ${item.status.border}`}>
+    <div
+      className={`rounded-2xl border p-4 ${item.status.bg} ${item.status.border}`}
+      data-testid="budget-card"
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <p className="font-semibold text-gray-900 flex items-center gap-2">
@@ -431,6 +434,7 @@ export default function Budgets() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
+            data-testid="budget-category-select"
             className="border rounded-lg px-3 py-2 md:col-span-2"
             required
           >
@@ -449,6 +453,7 @@ export default function Budgets() {
             value={limitAmount}
             onChange={(e) => setLimitAmount(e.target.value)}
             placeholder="Meta mensual (S/)"
+            data-testid="budget-amount-input"
             className="border rounded-lg px-3 py-2"
             required
           />
@@ -456,6 +461,7 @@ export default function Budgets() {
           <button
             type="submit"
             disabled={saving}
+            data-testid="save-budget-button"
             className="bg-[#0a2b6e] hover:bg-[#081f52] text-white rounded-lg px-3 py-2 font-medium disabled:opacity-60"
           >
             {saving ? "Guardando..." : "Guardar meta"}
