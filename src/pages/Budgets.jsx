@@ -1,4 +1,4 @@
-﻿import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { AlertTriangle, ArrowRight, PiggyBank, ShieldCheck, Target, Trash2, Wallet } from "lucide-react";
@@ -71,18 +71,18 @@ const getStatus = (progress) => {
 
 const getBudgetRecommendation = (item) => {
   if (item.progress >= 100) {
-    return `Ya superaste esta meta por ${formatCurrency(Math.abs(item.remaining))}. Revisa los ultimos gastos o ajusta el limite si fue un gasto excepcional.`;
+    return `Ya superaste esta meta por ${formatCurrency(Math.abs(item.remaining))}. Revisa los últimos gastos o ajusta el límite si fue un gasto excepcional.`;
   }
 
   if (item.progress >= 80) {
-    return `Quedan ${formatCurrency(Math.max(0, item.remaining))}. Mantén los gastos de esta categoria por debajo de ese monto para cerrar bien el mes.`;
+    return `Quedan ${formatCurrency(Math.max(0, item.remaining))}. Mantén los gastos de esta categoría por debajo de ese monto para cerrar bien el mes.`;
   }
 
   if (item.projectedExceeded) {
-    return `Aunque hoy luce saludable, al ritmo actual podria superar la meta cerca del dia ${item.estimatedExceedDay}.`;
+    return `Aunque hoy luce saludable, al ritmo actual podría superar la meta cerca del día ${item.estimatedExceedDay}.`;
   }
 
-  return `Vas dentro del limite. Puedes usar hasta ${formatCurrency(Math.max(0, item.remaining))} sin superar la meta.`;
+  return `Vas dentro del límite. Puedes usar hasta ${formatCurrency(Math.max(0, item.remaining))} sin superar la meta.`;
 };
 
 function BudgetCard({ item, onDelete }) {
@@ -109,7 +109,7 @@ function BudgetCard({ item, onDelete }) {
           <p className="mt-2 text-sm text-slate-600">{item.recommendation}</p>
           {item.projectedSpend > 0 ? (
             <p className="mt-1 text-xs text-slate-500">
-              Proyeccion de cierre: {formatCurrency(item.projectedSpend)}
+              Proyección de cierre: {formatCurrency(item.projectedSpend)}
             </p>
           ) : null}
         </div>
@@ -218,7 +218,7 @@ export default function Budgets() {
     monthTransactions
       .filter((tx) => !isIncome(tx))
       .forEach((tx) => {
-        const category = tx.category || "Sin categoria";
+        const category = tx.category || "Sin categoría";
         totals[category] = (totals[category] || 0) + (Number(tx.amount) || 0);
       });
 
@@ -273,7 +273,7 @@ export default function Budgets() {
     const savings = monthTotals.income - monthTotals.expenses;
     const savingsRate = monthTotals.income > 0 ? (savings / monthTotals.income) * 100 : null;
     const globalStatus =
-      exceeded.length > 0 ? "Riesgo alto" : risk.length > 0 ? "Atencion" : "Saludable";
+      exceeded.length > 0 ? "Riesgo alto" : risk.length > 0 ? "Atención" : "Saludable";
 
     return {
       totalLimit,
@@ -294,13 +294,13 @@ export default function Budgets() {
     e.preventDefault();
 
     if (!selectedCategory.trim()) {
-      toast.error("Selecciona una categoria");
+      toast.error("Selecciona una categoría");
       return;
     }
 
     const amount = Number(limitAmount);
     if (!amount || amount <= 0) {
-      toast.error("Ingresa una meta valida");
+      toast.error("Ingresa una meta válida");
       return;
     }
 
@@ -357,10 +357,10 @@ export default function Budgets() {
       if (item.projectedExceeded) {
         createNotification({
           type: "budget_projection",
-          title: `Proyeccion de meta: ${item.category}`,
+          title: `Proyección de meta: ${item.category}`,
           message: item.estimatedExceedDay
-            ? `Con tu ritmo actual podrias superar la meta cerca del dia ${item.estimatedExceedDay}.`
-            : `Con tu ritmo actual podrias cerrar en ${formatCurrency(item.projectedSpend)}.`,
+            ? `Con tu ritmo actual podrías superar la meta cerca del día ${item.estimatedExceedDay}.`
+            : `Con tu ritmo actual podrías cerrar en ${formatCurrency(item.projectedSpend)}.`,
           recommendation: `Reduce el ritmo de gasto en ${item.category} o ajusta la meta si este mes tiene gastos excepcionales.`,
           actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
           severity: "warning",
@@ -383,7 +383,7 @@ export default function Budgets() {
     <div className="space-y-6 pb-20">
       <PageHeader
         title="Metas Pro"
-        description="Controla presupuestos, proyecciones y ahorro mensual con una vista ejecutiva."
+        description="Controla presupuestos, proyecciónes y ahorro mensual con una vista ejecutiva."
       />
 
       <SectionPanel className="space-y-3">
@@ -410,7 +410,7 @@ export default function Budgets() {
             className="border rounded-lg px-3 py-2 md:col-span-2"
             required
           >
-            <option value="">Selecciona categoria de gasto</option>
+            <option value="">Selecciona categoría de gasto</option>
             {expenseCategories.map((categoryName) => (
               <option key={categoryName} value={categoryName}>
                 {categoryName}
@@ -459,7 +459,7 @@ export default function Budgets() {
           color={budgetSummary.savings >= 0 ? "green" : "red"}
         />
         <MetricCard
-          title="Proyeccion mensual"
+          title="Proyección mensual"
           value={formatCurrency(budgetSummary.projectedTotal)}
           helper="Gasto proyectado segun ritmo actual"
           color={budgetSummary.projectedTotal > budgetSummary.totalLimit ? "amber" : "slate"}
@@ -480,14 +480,14 @@ export default function Budgets() {
         <SectionPanel>
           <EmptyState
             title="No tienes metas configuradas para este mes."
-            description="Crea una meta por categoria para recibir alertas y entender mejor tus limites."
+            description="Crea una meta por categoría para recibir alertas y entender mejor tus límites."
           />
         </SectionPanel>
       ) : (
         <div className="space-y-6">
           <BudgetGroup
             title="Excedidas"
-            description="Prioridad alta: estas categorias ya pasaron el limite definido."
+            description="Prioridad alta: estas categorías ya pasaron el límite definido."
             icon={AlertTriangle}
             items={budgetSummary.exceeded}
             emptyText="No hay metas excedidas. Buen control."
@@ -495,7 +495,7 @@ export default function Budgets() {
           />
           <BudgetGroup
             title="En riesgo"
-            description="Categorias que ya superaron el 80% o podrian complicarse."
+            description="Categorías que ya superaron el 80% o podrían complicarse."
             icon={Wallet}
             items={budgetSummary.risk}
             emptyText="No hay metas en riesgo."
@@ -503,10 +503,10 @@ export default function Budgets() {
           />
           <BudgetGroup
             title="Saludables"
-            description="Categorias dentro de margen, con espacio para cerrar bien el mes."
+            description="Categorías dentro de margen, con espacio para cerrar bien el mes."
             icon={ShieldCheck}
             items={budgetSummary.healthy}
-            emptyText="Aun no hay metas saludables para este mes."
+            emptyText="Aún no hay metas saludables para este mes."
             onDelete={handleDeleteBudget}
           />
         </div>
@@ -542,13 +542,13 @@ export default function Budgets() {
           <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
             <div className="flex items-center gap-2 text-amber-700">
               <AlertTriangle size={18} />
-              <p className="font-semibold">Siguiente accion</p>
+              <p className="font-semibold">Siguiente acción</p>
             </div>
             <p className="mt-2 text-sm text-slate-600">
               {budgetSummary.exceeded.length > 0
-                ? `Revisa primero ${budgetSummary.exceeded[0].category}, es la meta mas critica.`
+                ? `Revisa primero ${budgetSummary.exceeded[0].category}, es la meta más crítica.`
                 : budgetSummary.risk.length > 0
-                ? `Vigila ${budgetSummary.risk[0].category}, esta cerca del limite.`
+                ? `Vigila ${budgetSummary.risk[0].category}, está cerca del límite.`
                 : "Mantén el ritmo actual y registra tus movimientos con frecuencia."}
             </p>
           </div>

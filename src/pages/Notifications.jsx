@@ -1,4 +1,4 @@
-﻿import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -29,12 +29,12 @@ const PRIORITY_GROUPS = [
   {
     key: "danger",
     title: "Criticas",
-    description: "Alertas que requieren atencion inmediata.",
+    description: "Alertas que requieren atención inmediata.",
   },
   {
     key: "warning",
-    title: "Atencion",
-    description: "Senales para ajustar tu gasto antes de que se vuelva critico.",
+    title: "Atención",
+    description: "Señales para ajustar tu gasto antes de que se vuelva crítico.",
   },
   {
     key: "info",
@@ -65,7 +65,7 @@ const severityStyles = {
     card: "border-amber-100 bg-amber-50/70",
     icon: "bg-amber-100 text-amber-700",
     badge: "bg-amber-100 text-amber-700",
-    label: "Atencion",
+    label: "Atención",
   },
   danger: {
     card: "border-red-100 bg-red-50/70",
@@ -110,8 +110,8 @@ const getFallbackRecommendation = (notification) => {
   switch (notification?.type) {
     case "budget_limit":
       return category
-        ? `Revisa los gastos de ${category}. Si fue un gasto excepcional, ajusta la meta; si no, intenta compensarlo en otras categorias.`
-        : "Revisa esta meta y define una accion para compensar el exceso.";
+        ? `Revisa los gastos de ${category}. Si fue un gasto excepcional, ajusta la meta; si no, intenta compensarlo en otras categorías.`
+        : "Revisa esta meta y define una acción para compensar el exceso.";
     case "budget_warning":
       return category
         ? `Mantén ${category} bajo control durante el resto del mes para no llegar al 100%.`
@@ -119,15 +119,15 @@ const getFallbackRecommendation = (notification) => {
     case "budget_projection":
       return category
         ? `Reduce el ritmo de gasto en ${category} o ajusta la meta si este mes es atipico.`
-        : "Revisa tu ritmo de gasto antes de que la proyeccion se vuelva critica.";
+        : "Revisa tu ritmo de gasto antes de que la proyección se vuelva crítica.";
     case "unusual_expense":
       return category
-        ? `Verifica si ${category} fue un gasto puntual o si necesitas crear una meta mas realista.`
-        : "Revisa si este movimiento fue puntual o representa un nuevo patron.";
+        ? `Verifica si ${category} fue un gasto puntual o si necesitas crear una meta más realista.`
+        : "Revisa si este movimiento fue puntual o representa un nuevo patrón.";
     case "daily_reminder":
       return "Registra tus movimientos de hoy para que tus reportes sigan siendo confiables.";
     default:
-      return "Revisa esta alerta y decide si requiere una accion.";
+      return "Revisa esta alerta y decide si requiere una acción.";
   }
 };
 
@@ -169,9 +169,9 @@ export default function Notifications() {
     const riskLevel = critical > 0 ? "Alto" : attention > 0 ? "Medio" : "Bajo";
     const suggestedAction =
       critical > 0
-        ? "Resuelve primero las alertas criticas."
+        ? "Resuelve primero las alertas críticas."
         : attention > 0
-        ? "Revisa las categorias en atencion."
+        ? "Revisa las categorías en atención."
         : "Mantén tu registro actualizado.";
 
     return { critical, attention, resolved, riskLevel, suggestedAction };
@@ -244,7 +244,7 @@ export default function Notifications() {
           <p className="mt-1 text-3xl font-bold text-[#0a2b6e]">
             {summary.critical} / {summary.attention}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Criticas / Atencion</p>
+          <p className="mt-1 text-xs text-slate-500">Criticas / Atención</p>
         </SectionPanel>
 
         <SectionPanel>
@@ -305,7 +305,7 @@ export default function Notifications() {
         ) : filteredNotifications.length === 0 ? (
           <EmptyState
             title="Sin alertas para mostrar"
-            description="Cuando NexoFin detecte metas en riesgo, gastos inusuales o recordatorios, apareceran aqui."
+            description="Cuando NexoFin detecte metas en riesgo, gastos inusuales o recordatorios, apareceran aquí."
           />
         ) : (
           <div className="space-y-6">
@@ -357,7 +357,7 @@ export default function Notifications() {
                             </div>
                             <p className="mt-1 text-sm text-slate-600">{item.message}</p>
                             <div className="mt-3 rounded-xl border border-white/70 bg-white/65 p-3 text-sm text-slate-700">
-                              <p className="font-semibold text-[#0a2b6e]">Recomendacion</p>
+                              <p className="font-semibold text-[#0a2b6e]">Recomendación</p>
                               <p className="mt-1">{recommendation}</p>
                             </div>
                             <p className="mt-2 text-xs text-slate-500">
@@ -386,7 +386,7 @@ export default function Notifications() {
                               }}
                               className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-medium text-[#0a2b6e] shadow-sm hover:bg-[#eff8ff]"
                             >
-                              Ver categoria
+                              Ver categoría
                             </Link>
                           ) : null}
                           {!resolved ? (
@@ -433,7 +433,7 @@ export default function Notifications() {
                   onClick={loadMoreNotifications}
                   disabled={loadingMoreNotifications}
                 >
-                  {loadingMoreNotifications ? "Cargando historial..." : "Cargar mas alertas"}
+                  {loadingMoreNotifications ? "Cargando historial..." : "Cargar más alertas"}
                 </Button>
               </div>
             ) : null}

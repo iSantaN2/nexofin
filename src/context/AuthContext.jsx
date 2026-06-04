@@ -130,7 +130,7 @@ export function AuthProvider({ children }) {
       await sendEmailVerification(credentials.user);
     } catch (error) {
       verificationEmailSent = false;
-      console.error("No se pudo enviar verificacion automaticamente:", error);
+      console.error("No se pudo enviar verificación automaticamente:", error);
     }
 
     return { credentials, verificationEmailSent };

@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   collection,
   addDoc,
@@ -120,17 +120,17 @@ export function TransactionsProvider({ children }) {
 
   const addTransaction = async (transaction) => {
     if (!user?.uid) {
-      toast.error("Debes iniciar sesion");
+      toast.error("Debes iniciar sesión");
       return null;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Guardando transaccion...");
+    const toastId = toast.loading("Guardando transacción...");
 
     try {
       const cleanData = sanitizeTransaction(transaction);
       if (!cleanData) {
-        toast.error("Datos invalidos en la transaccion");
+        toast.error("Datos inválidos en la transacción");
         return null;
       }
       const docRef = await addDoc(collection(db, "transactions"), cleanData);
@@ -141,8 +141,8 @@ export function TransactionsProvider({ children }) {
         await createNotification({
           type: "unusual_expense",
           title: `Gasto inusual: ${cleanData.category}`,
-          message: `Este gasto fue ${formatCurrency(unusualSignal.increaseAmount)} mayor que tu promedio en esta categoria.`,
-          recommendation: `Revisa si este gasto de ${cleanData.category} fue puntual. Si se repetira, considera ajustar tu meta o recortar otros gastos del mes.`,
+          message: `Este gasto fue ${formatCurrency(unusualSignal.increaseAmount)} mayor que tu promedio en esta categoría.`,
+          recommendation: `Revisa si este gasto de ${cleanData.category} fue puntual. Si se repetirá, considera ajustar tu meta o recortar otros gastos del mes.`,
           actionPath: `/transactions?category=${encodeURIComponent(cleanData.category)}`,
           severity: "warning",
           sourceKey: `unusual-transaction-${monthKey}-${cleanData.category}-${docRef.id}`,
@@ -177,11 +177,11 @@ export function TransactionsProvider({ children }) {
         }
       }
 
-      toast.success("Transaccion anadida correctamente", { id: toastId });
+      toast.success("Transacción añadida correctamente", { id: toastId });
       return docRef.id;
     } catch (error) {
-      console.error("Error al agregar transaccion:", error);
-      toast.error("Error al agregar transaccion", { id: toastId });
+      console.error("Error al agregar transacción:", error);
+      toast.error("Error al agregar transacción", { id: toastId });
       return null;
     } finally {
       setLoading(false);
@@ -191,29 +191,29 @@ export function TransactionsProvider({ children }) {
   const updateTransaction = async (transaction) => {
     const id = transaction?.id;
     if (!user?.uid) {
-      toast.error("Debes iniciar sesion");
+      toast.error("Debes iniciar sesión");
       return false;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Actualizando transaccion...");
+    const toastId = toast.loading("Actualizando transacción...");
 
     try {
       if (!id || typeof id !== "string") {
-        throw new Error("ID invalido al actualizar transaccion");
+        throw new Error("ID inválido al actualizar transacción");
       }
 
       const cleanData = sanitizeTransaction(transaction);
       if (!cleanData) {
-        throw new Error("Datos invalidos en la transaccion");
+        throw new Error("Datos inválidos en la transacción");
       }
       await updateDoc(doc(db, "transactions", id), cleanData);
 
-      toast.success("Transaccion actualizada correctamente", { id: toastId });
+      toast.success("Transacción actualizada correctamente", { id: toastId });
       return true;
     } catch (error) {
-      console.error("Error al actualizar transaccion:", error);
-      toast.error("Error al actualizar transaccion", { id: toastId });
+      console.error("Error al actualizar transacción:", error);
+      toast.error("Error al actualizar transacción", { id: toastId });
       return false;
     } finally {
       setLoading(false);
@@ -222,20 +222,20 @@ export function TransactionsProvider({ children }) {
 
   const deleteTransaction = async (id) => {
     if (!user?.uid) {
-      toast.error("Debes iniciar sesion");
+      toast.error("Debes iniciar sesión");
       return;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Eliminando transaccion...");
+    const toastId = toast.loading("Eliminando transacción...");
     try {
-      if (!id || typeof id !== "string") throw new Error("ID invalido");
+      if (!id || typeof id !== "string") throw new Error("ID inválido");
 
       await deleteDoc(doc(db, "transactions", id));
-      toast.success("Transaccion eliminada correctamente", { id: toastId });
+      toast.success("Transacción eliminada correctamente", { id: toastId });
     } catch (error) {
-      console.error("Error al eliminar transaccion:", error);
-      toast.error("No se pudo eliminar la transaccion", { id: toastId });
+      console.error("Error al eliminar transacción:", error);
+      toast.error("No se pudo eliminar la transacción", { id: toastId });
     } finally {
       setLoading(false);
     }

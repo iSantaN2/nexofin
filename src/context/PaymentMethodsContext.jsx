@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { db } from "../firebase/config";
 import {
   collection,
@@ -54,7 +54,7 @@ export const PaymentMethodsProvider = ({ children }) => {
               uid: user.uid,
             });
           }
-          toast.success("Metodos de pago iniciales anadidos");
+          toast.success("Métodos de pago iniciales añadidos");
         }
       }
     });
@@ -63,7 +63,7 @@ export const PaymentMethodsProvider = ({ children }) => {
   }, [user?.uid, initialized]);
 
   const addMethod = async (name) => {
-    if (!user?.uid) return toast.error("Debes iniciar sesion");
+    if (!user?.uid) return toast.error("Debes iniciar sesión");
 
     const trimmed = normalizeText(name, 60);
     if (!trimmed) return toast.error("El nombre no puede estar vacio");
@@ -71,16 +71,16 @@ export const PaymentMethodsProvider = ({ children }) => {
     const exists = methods.some((m) => m.name.toLowerCase() === trimmed.toLowerCase());
 
     if (exists) {
-      toast.error(`El metodo "${trimmed}" ya existe.`);
+      toast.error(`El método "${trimmed}" ya existe.`);
       return;
     }
 
     try {
       await addDoc(collection(db, "paymentMethods"), { name: trimmed, uid: user.uid });
-      toast.success(`Metodo "${trimmed}" anadido correctamente`);
+      toast.success(`Método "${trimmed}" anadido correctamente`);
     } catch (error) {
-      console.error("Error al anadir metodo:", error);
-      toast.error("No se pudo anadir el metodo");
+      console.error("Error al añadir método:", error);
+      toast.error("No se pudo añadir el método");
     }
   };
 
@@ -93,26 +93,26 @@ export const PaymentMethodsProvider = ({ children }) => {
     );
 
     if (duplicate) {
-      toast.error(`Ya existe un metodo con el nombre "${trimmed}"`);
+      toast.error(`Ya existe un método con el nombre "${trimmed}"`);
       return;
     }
 
     try {
       await updateDoc(doc(db, "paymentMethods", id), { name: trimmed });
-      toast.success("Metodo actualizado correctamente");
+      toast.success("Método actualizado correctamente");
     } catch (error) {
-      console.error("Error al editar metodo:", error);
-      toast.error("No se pudo actualizar el metodo");
+      console.error("Error al editar método:", error);
+      toast.error("No se pudo actualizar el método");
     }
   };
 
   const deleteMethod = async (id) => {
     try {
       await deleteDoc(doc(db, "paymentMethods", id));
-      toast.success("Metodo eliminado correctamente");
+      toast.success("Método eliminado correctamente");
     } catch (error) {
-      console.error("Error al eliminar metodo:", error);
-      toast.error("No se pudo eliminar el metodo");
+      console.error("Error al eliminar método:", error);
+      toast.error("No se pudo eliminar el método");
     }
   };
 

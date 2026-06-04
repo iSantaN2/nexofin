@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useCategories } from "../context/CategoriesContext";
 import { usePaymentMethods } from "../context/PaymentMethodsContext";
 import toast from "react-hot-toast";
@@ -83,7 +83,7 @@ export default function AddTransactionModal({
     );
 
     if (exists) {
-      toast.error(`La categoria "${trimmed}" ya existe en ${normalizedType}.`);
+      toast.error(`La categoría "${trimmed}" ya existe en ${normalizedType}.`);
       return;
     }
 
@@ -91,11 +91,11 @@ export default function AddTransactionModal({
       setAddingCategory(true);
       await addCategory(trimmed, normalizedType);
       setCategory(trimmed);
-      toast.success(`Categoria "${trimmed}" anadida correctamente.`);
+      toast.success(`Categoría "${trimmed}" añadida correctamente.`);
       closeCategoryModal();
     } catch (error) {
-      console.error("Error al anadir categoria:", error);
-      toast.error("No se pudo anadir la categoria");
+      console.error("Error al añadir categoría:", error);
+      toast.error("No se pudo añadir la categoría");
     } finally {
       setAddingCategory(false);
     }
@@ -106,7 +106,7 @@ export default function AddTransactionModal({
     const parsedAmount = Number(amount);
 
     if (!category || amount === "") {
-      toast.error("Completa la categoria y el monto");
+      toast.error("Completa la categoría y el monto");
       return;
     }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
@@ -156,8 +156,8 @@ export default function AddTransactionModal({
       resetForm();
       onClose();
     } catch (error) {
-      console.error("Error al guardar transaccion:", error);
-      toast.error("Error al guardar transaccion");
+      console.error("Error al guardar transacción:", error);
+      toast.error("Error al guardar transacción");
     }
   };
 
@@ -173,10 +173,10 @@ export default function AddTransactionModal({
         <div className="flex items-start justify-between gap-3 border-b border-[#edf3ff] px-5 py-4">
           <div>
             <h3 className="text-lg font-semibold text-[#0a2b6e]">
-              {initialData ? "Editar transaccion" : "Anadir transaccion"}
+              {initialData ? "Editar transacción" : "Añadir transacción"}
             </h3>
             <p className="text-sm text-slate-500">
-              {initialData ? "Actualiza los datos del movimiento." : "Registra un ingreso o gasto del dia."}
+              {initialData ? "Actualiza los datos del movimiento." : "Registra un ingreso o gasto del día."}
             </p>
           </div>
           <button
@@ -226,7 +226,7 @@ export default function AddTransactionModal({
               className="w-full border rounded-lg p-2.5"
               required
             >
-              <option value="">Selecciona una categoria</option>
+              <option value="">Selecciona una categoría</option>
               {filteredCategories.map((cat) => (
                 <option key={cat.id || cat.name} value={cat.name}>
                   {cat.name}
@@ -237,8 +237,8 @@ export default function AddTransactionModal({
               type="button"
               onClick={handleOpenAddCategory}
               className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-[#1f67ff] text-white hover:bg-[#0a2b6e]"
-              title="Nueva categoria"
-              aria-label="Nueva categoria"
+              title="Nueva categoría"
+              aria-label="Nueva categoría"
             >
               <Plus size={18} />
             </button>
@@ -306,9 +306,9 @@ export default function AddTransactionModal({
       {showCategoryModal && (
         <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5 border border-[#dbe8ff]">
-            <h4 className="text-base font-semibold text-[#0a2b6e] mb-1">Nueva categoria</h4>
+            <h4 className="text-base font-semibold text-[#0a2b6e] mb-1">Nueva categoría</h4>
             <p className="text-sm text-slate-500 mb-3">
-              Se creara como {type === "income" ? "categoria de ingreso" : "categoria de gasto"}.
+              Se creará como {type === "income" ? "categoría de ingreso" : "categoría de gasto"}.
             </p>
             <input
               type="text"

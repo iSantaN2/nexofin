@@ -1,7 +1,9 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
+import AuthShell from "../components/AuthShell";
+import Button from "../components/ui/Button";
 
 export default function Login() {
   const { login, resetPassword } = useAuth();
@@ -21,11 +23,11 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      toast.success("Sesion iniciada");
+      toast.success("Sesión iniciada");
       navigate(from, { replace: true });
     } catch (error) {
       console.error(error);
-      toast.error("Credenciales invalidas o usuario no registrado");
+      toast.error("Credenciales inválidas o usuario no registrado");
     } finally {
       setLoading(false);
     }
@@ -35,14 +37,14 @@ export default function Login() {
     const targetEmail = recoverEmail.trim() || email.trim();
 
     if (!targetEmail) {
-      toast.error("Ingresa tu correo para recuperar la contrasena");
+      toast.error("Ingresa tu correo para recuperar la contraseña");
       return;
     }
 
     setRecoverLoading(true);
     try {
       await resetPassword(targetEmail);
-      toast.success("Te enviamos un enlace de recuperacion al correo");
+      toast.success("Te enviamos un enlace de recuperación al correo");
       setShowRecover(false);
       setRecoverEmail("");
     } catch (error) {
@@ -54,43 +56,37 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fbff] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-[#d9e6ff] shadow-lg rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <img src="/nexofin-logo.png" alt="NexoFin" className="w-10 h-10 object-contain" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#0a2b6e] to-[#12c59a] bg-clip-text text-transparent">
-            NexoFin
-          </h1>
-        </div>
-
-        <h2 className="text-xl font-semibold text-[#0a2b6e] mb-1">Iniciar sesion</h2>
-        <p className="text-sm text-gray-500 mb-5">Ingresa para continuar</p>
-
+    <AuthShell
+      title="Iniciar sesión"
+      subtitle="Ingresa a tu panel para revisar tu balance, metas, reportes y alertas financieras."
+    >
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="email"
             placeholder="Correo"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded-lg p-2"
+            className="w-full"
             required
           />
           <input
             type="password"
-            placeholder="Contrasena"
+            placeholder="Contraseña"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded-lg p-2"
+            className="w-full"
             required
           />
 
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#0a2b6e] hover:bg-[#081f52] text-white py-2 rounded-lg disabled:opacity-60"
+            variant="brand"
+            size="lg"
+            className="w-full"
           >
             {loading ? "Entrando..." : "Entrar"}
-          </button>
+          </Button>
         </form>
 
         <div className="mt-3">
@@ -102,27 +98,28 @@ export default function Login() {
             }}
             className="text-sm text-[#1f67ff] hover:text-[#0a2b6e] font-medium"
           >
-            Olvide mi contrasena
+            Olvidé mi contraseña
           </button>
 
           {showRecover && (
-            <div className="mt-3 p-3 bg-[#eff8ff] border border-[#d9ecff] rounded-lg space-y-2">
-              <p className="text-sm text-gray-600">Te enviaremos un enlace de recuperacion</p>
+            <div className="mt-3 space-y-2 rounded-2xl border border-[#d9ecff] bg-[#eff8ff] p-3">
+              <p className="text-sm text-gray-600">Te enviaremos un enlace de recuperación</p>
               <input
                 type="email"
-                placeholder="Correo de recuperacion"
+                placeholder="Correo de recuperación"
                 value={recoverEmail}
                 onChange={(e) => setRecoverEmail(e.target.value)}
-                className="w-full border rounded-lg p-2"
+                className="w-full"
               />
-              <button
+              <Button
                 type="button"
                 onClick={handleRecoverPassword}
                 disabled={recoverLoading}
-                className="w-full bg-[#1f67ff] hover:bg-[#0a2b6e] text-white py-2 rounded-lg disabled:opacity-60"
+                variant="primary"
+                className="w-full"
               >
                 {recoverLoading ? "Enviando..." : "Enviar enlace"}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -133,7 +130,6 @@ export default function Login() {
             Crea una
           </Link>
         </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

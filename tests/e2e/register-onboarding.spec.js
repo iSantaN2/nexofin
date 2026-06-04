@@ -9,13 +9,13 @@ test.skip(
   "Activa E2E_REGISTER_ENABLED=true para ejecutar registro automatizado."
 );
 
-test("registro redirige a verificacion de correo", async ({ page }) => {
+test("registro redirige a verificación de correo", async ({ page }) => {
   const uniqueEmail = `nexofin.e2e.${Date.now()}@${E2E_REGISTER_DOMAIN}`;
 
   await page.goto("/register");
   await page.getByPlaceholder("Correo").fill(uniqueEmail);
-  await page.getByPlaceholder("Contrasena").fill(E2E_REGISTER_PASSWORD);
-  await page.getByPlaceholder("Confirmar contrasena").fill(E2E_REGISTER_PASSWORD);
+  await page.getByPlaceholder("Contraseña").fill(E2E_REGISTER_PASSWORD);
+  await page.getByPlaceholder("Confirmar contraseña").fill(E2E_REGISTER_PASSWORD);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
 
   await expect(page).toHaveURL(/\/verify-email$/);

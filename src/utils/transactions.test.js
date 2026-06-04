@@ -34,7 +34,7 @@ const transactions = [
     amount: 45.5,
     date: "2026-05-28T10:00:00.000Z",
     createdAt: "2026-05-28T10:10:00.000Z",
-    notes: "Menú del dia",
+    notes: "Menú del día",
   },
 ];
 

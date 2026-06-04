@@ -46,7 +46,7 @@ export function buildBudgetAlertNotification({
       ? `Gastaste ${formatCurrency(safeSpent)} de ${formatCurrency(safeLimit)} en ${safeCategory}.`
       : `${safeCategory} ya va en ${progress.toFixed(1)}% de su meta mensual.`,
     recommendation: isExceeded
-      ? `Revisa los gastos de ${safeCategory}. Para volver al limite necesitas reducir ${formatCurrency(Math.abs(remaining))} o ajustar tu meta mensual.`
+      ? `Revisa los gastos de ${safeCategory}. Para volver al límite necesitas reducir ${formatCurrency(Math.abs(remaining))} o ajustar tu meta mensual.`
       : `Te quedan ${formatCurrency(Math.max(0, remaining))} para el resto del mes. Intenta mantener los proximos gastos de ${safeCategory} por debajo de ese monto.`,
     actionPath: `/transactions?category=${encodeURIComponent(safeCategory)}`,
     severity: isExceeded ? "danger" : "warning",

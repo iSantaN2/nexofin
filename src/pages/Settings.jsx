@@ -22,8 +22,8 @@ import SectionPanel from "../components/ui/SectionPanel";
 
 const TABS = [
   { key: "profile", label: "Perfil", icon: UserCircle2 },
-  { key: "categories", label: "Categorias", icon: LayoutGrid },
-  { key: "methods", label: "Metodos de pago", icon: WalletCards },
+  { key: "categories", label: "Categorías", icon: LayoutGrid },
+  { key: "methods", label: "Métodos de pago", icon: WalletCards },
   { key: "notifications", label: "Notificaciones", icon: BellRing },
 ];
 
@@ -31,17 +31,17 @@ function getAuthErrorMessage(error, fallback) {
   switch (error?.code) {
     case "auth/invalid-credential":
     case "auth/wrong-password":
-      return "La contrasena actual es incorrecta.";
+      return "La contraseña actual es incorrecta.";
     case "auth/requires-recent-login":
-      return "Por seguridad, vuelve a iniciar sesion e intentalo otra vez.";
+      return "Por seguridad, vuelve a iniciar sesión e inténtalo otra vez.";
     case "auth/email-already-in-use":
-      return "Ese correo ya esta en uso por otra cuenta.";
+      return "Ese correo ya está en uso por otra cuenta.";
     case "auth/invalid-email":
-      return "El correo no tiene un formato valido.";
+      return "El correo no tiene un formato válido.";
     case "auth/weak-password":
-      return "La nueva contrasena es muy debil.";
+      return "La nueva contraseña es muy débil.";
     case "auth/too-many-requests":
-      return "Demasiados intentos. Espera unos minutos e intentalo de nuevo.";
+      return "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.";
     case "permission-denied":
       return "No tienes permisos para borrar algunos datos en Firestore.";
     default:
@@ -72,7 +72,7 @@ export default function Settings() {
     <div className="space-y-6">
       <PageHeader
         title="Ajustes"
-        description="Gestiona perfil, categorias, metodos de pago y notificaciones."
+        description="Gestiona perfil, categorías, métodos de pago y notificaciones."
       />
 
       <div className="flex flex-wrap gap-2 border-b border-[#d9e6ff] pb-3">
@@ -141,19 +141,19 @@ function NotificationSettings({ notificationSettings, updateNotificationSettings
       key: "budget80Enabled",
       title: "Alerta al 80% de meta",
       description:
-        "Muestra aviso cuando una categoria de gasto llega al 80% de su meta mensual.",
+        "Muestra aviso cuando una categoría de gasto llega al 80% de su meta mensual.",
     },
     {
       key: "budget100Enabled",
       title: "Alerta al 100% de meta",
       description:
-        "Muestra aviso cuando una categoria llega o supera el 100% de su meta mensual.",
+        "Muestra aviso cuando una categoría llega o supera el 100% de su meta mensual.",
     },
     {
       key: "dailyReminderEnabled",
       title: "Recordatorio diario",
       description:
-        "Muestra aviso una vez al dia cuando aun no registraste movimientos hoy.",
+        "Muestra aviso una vez al día cuando aún no registraste movimientos hoy.",
     },
   ];
 
@@ -164,7 +164,7 @@ function NotificationSettings({ notificationSettings, updateNotificationSettings
     setTimeout(() => {
       setSavingKey("");
     }, 250);
-    toast.success("Preferencia de notificacion actualizada");
+    toast.success("Preferencia de notificación actualizada");
   };
 
   return (
@@ -247,7 +247,7 @@ function ProfileSettings({
       lastSignInAt: formatAuthDate(user?.metadata?.lastSignInTime),
       provider:
         user?.providerData?.[0]?.providerId === "password"
-          ? "Correo y contrasena"
+          ? "Correo y contraseña"
           : user?.providerData?.[0]?.providerId || "-",
     }),
     [user]
@@ -313,7 +313,7 @@ function ProfileSettings({
     }
 
     if (!emailPassword.trim()) {
-      toast.error("Ingresa tu contrasena actual");
+      toast.error("Ingresa tu contraseña actual");
       return;
     }
 
@@ -335,35 +335,35 @@ function ProfileSettings({
     e.preventDefault();
 
     if (!currentPassword.trim()) {
-      toast.error("Ingresa tu contrasena actual");
+      toast.error("Ingresa tu contraseña actual");
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.error("La nueva contrasena debe tener al menos 6 caracteres");
+      toast.error("La nueva contraseña debe tener al menos 6 caracteres");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Las contrasenas no coinciden");
+      toast.error("Las contraseñas no coinciden");
       return;
     }
 
     if (newPassword === currentPassword) {
-      toast.error("La nueva contrasena debe ser distinta");
+      toast.error("La nueva contraseña debe ser distinta");
       return;
     }
 
     setPasswordLoading(true);
     try {
       await updateUserPassword(currentPassword, newPassword);
-      toast.success("Contrasena actualizada correctamente");
+      toast.success("Contraseña actualizada correctamente");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
       console.error(error);
-      toast.error(getAuthErrorMessage(error, "No se pudo actualizar la contrasena"));
+      toast.error(getAuthErrorMessage(error, "No se pudo actualizar la contraseña"));
     } finally {
       setPasswordLoading(false);
     }
@@ -378,7 +378,7 @@ function ProfileSettings({
     }
 
     if (!deletePassword.trim()) {
-      toast.error("Ingresa tu contrasena actual");
+      toast.error("Ingresa tu contraseña actual");
       return;
     }
 
@@ -448,7 +448,7 @@ function ProfileSettings({
           />
           <input
             type="password"
-            placeholder="Contrasena actual"
+            placeholder="Contraseña actual"
             value={emailPassword}
             onChange={(e) => setEmailPassword(e.target.value)}
             className="w-full border rounded-lg p-2"
@@ -468,10 +468,10 @@ function ProfileSettings({
           onSubmit={handleUpdatePassword}
           className="border border-[#e4edff] rounded-xl p-4 space-y-3"
         >
-          <h3 className="font-semibold text-[#0a2b6e]">Cambiar contrasena</h3>
+          <h3 className="font-semibold text-[#0a2b6e]">Cambiar contraseña</h3>
           <input
             type="password"
-            placeholder="Contrasena actual"
+            placeholder="Contraseña actual"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             className="w-full border rounded-lg p-2"
@@ -479,7 +479,7 @@ function ProfileSettings({
           />
           <input
             type="password"
-            placeholder="Nueva contrasena"
+            placeholder="Nueva contraseña"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             className="w-full border rounded-lg p-2"
@@ -487,7 +487,7 @@ function ProfileSettings({
           />
           <input
             type="password"
-            placeholder="Confirmar nueva contrasena"
+            placeholder="Confirmar nueva contraseña"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="w-full border rounded-lg p-2"
@@ -499,7 +499,7 @@ function ProfileSettings({
             variant="brand"
             className="w-full"
           >
-            {passwordLoading ? "Actualizando..." : "Actualizar contrasena"}
+            {passwordLoading ? "Actualizando..." : "Actualizar contraseña"}
           </Button>
         </form>
 
@@ -513,7 +513,7 @@ function ProfileSettings({
               <span className="font-medium text-gray-800">Ultimo acceso:</span> {securityInfo.lastSignInAt}
             </p>
             <p>
-              <span className="font-medium text-gray-800">Metodo de acceso:</span> {securityInfo.provider}
+              <span className="font-medium text-gray-800">Método de acceso:</span> {securityInfo.provider}
             </p>
           </div>
         </div>
@@ -525,7 +525,7 @@ function ProfileSettings({
           Zona de peligro
         </h3>
         <p className="text-sm text-red-700">
-          Esta accion elimina tu cuenta y todos tus datos (transacciones, categorias y metodos de
+          Esta acción elimina tu cuenta y todos tus datos (transacciones, categorías y métodos de
           pago). Escribe <strong>ELIMINAR</strong> para confirmar.
         </p>
         <input
@@ -538,7 +538,7 @@ function ProfileSettings({
         />
         <input
           type="password"
-          placeholder="Contrasena actual"
+          placeholder="Contraseña actual"
           value={deletePassword}
           onChange={(e) => setDeletePassword(e.target.value)}
           className="w-full border border-red-300 rounded-lg p-2"
@@ -559,7 +559,7 @@ function ProfileSettings({
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-red-100 p-5 space-y-4">
             <h4 className="text-lg font-semibold text-red-700">Confirmar eliminacion de cuenta</h4>
             <p className="text-sm text-gray-700">
-              Vas a eliminar tu cuenta y todos tus datos. Esta accion no se puede deshacer.
+              Vas a eliminar tu cuenta y todos tus datos. Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-2 justify-end">
               <Button
@@ -596,7 +596,7 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
   const handleAdd = async () => {
     const trimmed = newName.trim();
     if (!trimmed) {
-      toast.error("Escribe una categoria");
+      toast.error("Escribe una categoría");
       return;
     }
 
@@ -621,13 +621,13 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
 
   return (
     <div className="space-y-5">
-      <h3 className="text-lg font-semibold text-[#0a2b6e]">Categorias ({categories.length})</h3>
+      <h3 className="text-lg font-semibold text-[#0a2b6e]">Categorías ({categories.length})</h3>
 
       <div className="flex flex-col md:flex-row gap-3">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nueva categoria"
+          placeholder="Nueva categoría"
           className="flex-1 border rounded-lg p-3"
         />
         <select
@@ -649,7 +649,7 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
       </div>
 
       <CategoryList
-        title="Categorias de gasto"
+        title="Categorías de gasto"
         items={expenseCategories}
         editingId={editingId}
         editName={editName}
@@ -662,7 +662,7 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
       />
 
       <CategoryList
-        title="Categorias de ingreso"
+        title="Categorías de ingreso"
         items={incomeCategories}
         editingId={editingId}
         editName={editName}
@@ -769,7 +769,7 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
 
   const handleAdd = async () => {
     if (!newMethod.trim()) {
-      toast.error("Escribe un metodo");
+      toast.error("Escribe un método");
       return;
     }
 
@@ -790,13 +790,13 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-lg font-semibold text-[#0a2b6e]">Metodos de pago ({methods.length})</h3>
+      <h3 className="text-lg font-semibold text-[#0a2b6e]">Métodos de pago ({methods.length})</h3>
 
       <div className="flex flex-col md:flex-row gap-3">
         <input
           value={newMethod}
           onChange={(e) => setNewMethod(e.target.value)}
-          placeholder="Nuevo metodo de pago"
+          placeholder="Nuevo método de pago"
           className="flex-1 border rounded-lg p-3"
         />
         <Button
@@ -810,7 +810,7 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
       </div>
 
       {methods.length === 0 ? (
-        <EmptyState title="Sin metodos registrados" description="Agrega tus metodos de pago habituales." />
+        <EmptyState title="Sin métodos registrados" description="Agrega tus métodos de pago habituales." />
       ) : (
         <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
           {methods.map((method) => (

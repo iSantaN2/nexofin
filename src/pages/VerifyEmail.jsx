@@ -2,13 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
+import AuthShell from "../components/AuthShell";
+import Button from "../components/ui/Button";
 
 function getVerificationErrorMessage(error) {
   switch (error?.code) {
     case "auth/too-many-requests":
-      return "Demasiados intentos. Espera unos minutos e intentalo otra vez.";
+      return "Demasiados intentos. Espera unos minutos e inténtalo otra vez.";
     default:
-      return "No se pudo completar la accion. Intentalo nuevamente.";
+      return "No se pudo completar la acción. Inténtalo nuevamente.";
   }
 }
 
@@ -30,7 +32,7 @@ export default function VerifyEmail() {
     setSending(true);
     try {
       await resendVerificationEmail();
-      toast.success("Te enviamos otro correo de verificacion");
+      toast.success("Te enviamos otro correo de verificación");
     } catch (error) {
       console.error(error);
       toast.error(getVerificationErrorMessage(error));
@@ -47,7 +49,7 @@ export default function VerifyEmail() {
         toast.success("Correo verificado. Bienvenido.");
         navigate("/", { replace: true });
       } else {
-        toast.error("Tu correo aun no esta verificado");
+        toast.error("Tu correo aún no está verificado");
       }
     } catch (error) {
       console.error(error);
@@ -63,58 +65,54 @@ export default function VerifyEmail() {
       navigate("/login", { replace: true });
     } catch (error) {
       console.error(error);
-      toast.error("No se pudo cerrar sesion");
+      toast.error("No se pudo cerrar sesión");
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fbff] flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-white border border-[#d9e6ff] shadow-lg rounded-2xl p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <img src="/nexofin-logo.png" alt="NexoFin" className="w-10 h-10 object-contain" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#0a2b6e] to-[#12c59a] bg-clip-text text-transparent">
-            NexoFin
-          </h1>
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold text-[#0a2b6e]">Verifica tu correo</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Enviamos un enlace de verificacion a <span className="font-medium">{email}</span>.
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Abre ese correo, confirma tu cuenta y luego presiona "Ya verifique mi correo".
-          </p>
-        </div>
+    <AuthShell
+      title="Verifica tu correo"
+      subtitle="Confirma tu cuenta para proteger tus datos y activar tu panel financiero."
+    >
+      <div className="rounded-2xl border border-[#d9e6ff] bg-[#f8fbff] p-4">
+        <p className="text-sm text-gray-600">
+          Enviamos un enlace de verificación a <span className="font-semibold text-[#0a2b6e]">{email}</span>.
+        </p>
+        <p className="mt-2 text-sm text-gray-500">
+          Abre ese correo, confirma tu cuenta y luego presiona "Ya verifiqué mi correo".
+        </p>
+      </div>
 
         <div className="space-y-2">
-          <button
+          <Button
             type="button"
             onClick={handleCheckStatus}
             disabled={checking}
-            className="w-full bg-[#0a2b6e] hover:bg-[#081f52] text-white py-2 rounded-lg disabled:opacity-60"
+            variant="brand"
+            className="w-full"
           >
-            {checking ? "Validando..." : "Ya verifique mi correo"}
-          </button>
+            {checking ? "Validando..." : "Ya verifiqué mi correo"}
+          </Button>
 
-          <button
+          <Button
             type="button"
             onClick={handleResend}
             disabled={sending}
-            className="w-full bg-[#eff8ff] hover:bg-[#e3f2ff] text-[#0a2b6e] py-2 rounded-lg disabled:opacity-60"
+            variant="soft"
+            className="w-full"
           >
-            {sending ? "Enviando..." : "Reenviar correo de verificacion"}
-          </button>
+            {sending ? "Enviando..." : "Reenviar correo de verificación"}
+          </Button>
 
-          <button
+          <Button
             type="button"
             onClick={handleLogout}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg"
+            variant="neutral"
+            className="w-full"
           >
-            Cerrar sesion
-          </button>
+            Cerrar sesión
+          </Button>
         </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

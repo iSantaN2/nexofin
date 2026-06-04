@@ -59,8 +59,8 @@ export function getTopExpenseCategory(items = []) {
 
     const category =
       typeof item?.category === "object"
-        ? item.category?.name || "Sin categoria"
-        : item?.category || "Sin categoria";
+        ? item.category?.name || "Sin categoría"
+        : item?.category || "Sin categoría";
     grouped[category] = (grouped[category] || 0) + (Number(item?.amount) || 0);
   });
 
@@ -96,26 +96,26 @@ export function buildMonthlyInsight({
   const previousBalance = Number(previousTotals?.balance) || 0;
 
   if (criticalBudget?.progress >= 100) {
-    return `Tu prioridad este mes es ${criticalBudget.category}: ya supero su meta.`;
+    return `Tu prioridad este mes es ${criticalBudget.category}: ya superó su meta.`;
   }
 
   if (criticalBudget?.progress >= 80) {
-    return `Vigila ${criticalBudget.category}: esta cerca de superar su meta mensual.`;
+    return `Vigila ${criticalBudget.category}: está cerca de superar su meta mensual.`;
   }
 
   if (hasPreviousData && currentBalance > previousBalance) {
-    return "Tu balance va mejor que el mes anterior. Mantener este ritmo seria una buena senal.";
+    return "Tu balance va mejor que el mes anterior. Mantener este ritmo sería una buena señal.";
   }
 
   if (hasPreviousData && currentBalance < previousBalance) {
-    return "Tu balance bajo frente al mes anterior. Conviene revisar los gastos principales.";
+    return "Tu balance bajó frente al mes anterior. Conviene revisar los gastos principales.";
   }
 
   if (topExpenseCategory) {
     return `${topExpenseCategory.category} concentra tu mayor gasto del mes.`;
   }
 
-  return "Aun faltan movimientos para generar un insight financiero fuerte.";
+  return "Aún faltan movimientos para generar un insight financiero fuerte.";
 }
 
 export function buildFinancialRecommendation({ totals, topExpenseCategory, criticalBudget } = {}) {
@@ -126,7 +126,7 @@ export function buildFinancialRecommendation({ totals, topExpenseCategory, criti
   }
 
   if (criticalBudget?.progress >= 80) {
-    return `Reserva un margen para ${criticalBudget.category}; estas cerca del limite.`;
+    return `Reserva un margen para ${criticalBudget.category}; estás cerca del límite.`;
   }
 
   if (savingsRate !== null && savingsRate < 10) {
@@ -134,7 +134,7 @@ export function buildFinancialRecommendation({ totals, topExpenseCategory, criti
   }
 
   if (topExpenseCategory) {
-    return `Revisa si puedes optimizar ${topExpenseCategory.category}, tu categoria de mayor gasto.`;
+    return `Revisa si puedes optimizar ${topExpenseCategory.category}, tu categoría de mayor gasto.`;
   }
 
   return "Registra movimientos con frecuencia para que NexoFin pueda darte mejores recomendaciones.";
@@ -148,8 +148,8 @@ export function getExpenseTotalsByCategory(items = []) {
 
     const category =
       typeof item?.category === "object"
-        ? item.category?.name || "Sin categoria"
-        : item?.category || "Sin categoria";
+        ? item.category?.name || "Sin categoría"
+        : item?.category || "Sin categoría";
 
     grouped[category] = (grouped[category] || 0) + (Number(item?.amount) || 0);
   });

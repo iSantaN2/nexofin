@@ -59,7 +59,7 @@ export default function CalendarPage() {
             parsedDate,
             amount: Number(item.amount) || 0,
             type: isIncome(item.type) ? "Ingreso" : "Gasto",
-            category: item.category || "Sin categoria",
+            category: item.category || "Sin categoría",
           };
         })
         .filter(Boolean),
@@ -178,14 +178,14 @@ export default function CalendarPage() {
     <div className="flex flex-col gap-4 pb-12">
       <PageHeader
         title="Calendario financiero"
-        description="Revisa movimientos por dia y detecta patrones semanales."
+        description="Revisa movimientos por día y detecta patrónes semanales."
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard title="Ingresos del dia" value={formatCurrency(daySummary.ingresos)} color="green" />
-        <MetricCard title="Gastos del dia" value={formatCurrency(daySummary.gastos)} color="red" />
+        <MetricCard title="Ingresos del día" value={formatCurrency(daySummary.ingresos)} color="green" />
+        <MetricCard title="Gastos del día" value={formatCurrency(daySummary.gastos)} color="red" />
         <MetricCard
-          title="Balance del dia"
+          title="Balance del día"
           value={formatCurrency(daySummary.balance)}
           color={daySummary.balance >= 0 ? "green" : "red"}
         />
@@ -241,7 +241,7 @@ export default function CalendarPage() {
           >
             {categories.map((item) => (
               <option key={item} value={item}>
-                {item === "all" ? "Todas las categorias" : item}
+                {item === "all" ? "Todas las categorías" : item}
               </option>
             ))}
           </select>
@@ -320,7 +320,7 @@ export default function CalendarPage() {
       <SectionPanel title={dayjs(selectedDate).format("D MMMM YYYY")}>
         {selectedDayTransactions.length === 0 ? (
           <EmptyState
-            title="No hay transacciones este dia."
+            title="No hay transacciones este día."
             description="Agrega un movimiento para verlo reflejado en el calendario."
           />
         ) : (
@@ -335,7 +335,7 @@ export default function CalendarPage() {
                   <div>
                     <p className="font-medium text-gray-800">{item.category}</p>
                     <p className="text-xs text-gray-500">
-                      {formatTime(item.parsedDate)} � {item.account || "Sin metodo"}
+                      {formatTime(item.parsedDate)} · {item.account || "Sin método"}
                     </p>
                     {item.notes ? <p className="text-xs text-gray-500">{item.notes}</p> : null}
                   </div>

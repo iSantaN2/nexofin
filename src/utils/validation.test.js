@@ -44,7 +44,7 @@ describe("validation utils", () => {
 
   it("normalizeIsoDate returns fallback for invalid date", () => {
     const fallback = new Date("2026-01-01T00:00:00.000Z");
-    expect(normalizeIsoDate("fecha-invalida", fallback)).toBe(
+    expect(normalizeIsoDate("fecha-inválida", fallback)).toBe(
       "2026-01-01T00:00:00.000Z"
     );
   });

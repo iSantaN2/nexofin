@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   collection,
   addDoc,
@@ -51,7 +51,7 @@ export const CategoriesProvider = ({ children }) => {
           for (const cat of DEFAULT_CATEGORIES) {
             await addDoc(collection(db, "categories"), { ...cat, uid: user.uid });
           }
-          toast.success("Categorias iniciales anadidas");
+          toast.success("Categorías iniciales añadidas");
         }
       }
     });
@@ -60,7 +60,7 @@ export const CategoriesProvider = ({ children }) => {
   }, [user?.uid, initialized]);
 
   const addCategory = async (name, type = "gasto") => {
-    if (!user?.uid) return toast.error("Debes iniciar sesion");
+    if (!user?.uid) return toast.error("Debes iniciar sesión");
 
     const trimmed = normalizeText(name, 60);
     const safeType = normalizeCategoryType(type);
@@ -73,16 +73,16 @@ export const CategoriesProvider = ({ children }) => {
     );
 
     if (duplicate) {
-      toast.error(`La categoria "${trimmed}" ya existe en ${safeType}.`);
+      toast.error(`La categoría "${trimmed}" ya existe en ${safeType}.`);
       return;
     }
 
     try {
       await addDoc(collection(db, "categories"), { name: trimmed, type: safeType, uid: user.uid });
-      toast.success(`Categoria "${trimmed}" anadida correctamente a ${safeType}`);
+      toast.success(`Categoría "${trimmed}" añadida correctamente a ${safeType}`);
     } catch (error) {
-      console.error("Error al anadir categoria:", error);
-      toast.error("Error al anadir categoria");
+      console.error("Error al añadir categoría:", error);
+      toast.error("Error al añadir categoría");
     }
   };
 
@@ -99,27 +99,27 @@ export const CategoriesProvider = ({ children }) => {
         c.type?.toLowerCase() === newType
     );
 
-    if (duplicate) return toast.error(`La categoria "${trimmedName}" ya existe en ${newType}.`);
+    if (duplicate) return toast.error(`La categoría "${trimmedName}" ya existe en ${newType}.`);
 
     try {
       await updateDoc(doc(db, "categories", id), {
         name: trimmedName,
         type: newType,
       });
-      toast.success("Categoria actualizada correctamente");
+      toast.success("Categoría actualizada correctamente");
     } catch (error) {
-      console.error("Error al editar categoria:", error);
-      toast.error("No se pudo actualizar la categoria");
+      console.error("Error al editar categoría:", error);
+      toast.error("No se pudo actualizar la categoría");
     }
   };
 
   const deleteCategory = async (id) => {
     try {
       await deleteDoc(doc(db, "categories", id));
-      toast.success("Categoria eliminada correctamente");
+      toast.success("Categoría eliminada correctamente");
     } catch (error) {
-      console.error("Error al eliminar categoria:", error);
-      toast.error("No se pudo eliminar la categoria");
+      console.error("Error al eliminar categoría:", error);
+      toast.error("No se pudo eliminar la categoría");
     }
   };
 

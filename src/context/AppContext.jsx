@@ -1,4 +1,4 @@
-﻿import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../firebase/config";
 import {
   addDoc,
@@ -302,7 +302,7 @@ export const AppProvider = ({ children }) => {
 
       return docRef.id;
     } catch (error) {
-      console.error("Error al crear notificacion:", error);
+      console.error("Error al crear notificación:", error);
       return null;
     }
   }, [user?.uid]);
@@ -323,7 +323,7 @@ export const AppProvider = ({ children }) => {
       );
       return true;
     } catch (error) {
-      console.error("Error al marcar notificacion:", error);
+      console.error("Error al marcar notificación:", error);
       return false;
     }
   }, [user?.uid]);
@@ -355,7 +355,7 @@ export const AppProvider = ({ children }) => {
       );
       return true;
     } catch (error) {
-      console.error("Error al resolver notificacion:", error);
+      console.error("Error al resolver notificación:", error);
       return false;
     }
   }, [user?.uid]);
@@ -367,7 +367,7 @@ export const AppProvider = ({ children }) => {
       await deleteDoc(doc(db, "notifications", id));
       setNotifications((previous) => previous.filter((item) => item.id !== id));
     } catch (error) {
-      console.error("Error al eliminar notificacion:", error);
+      console.error("Error al eliminar notificación:", error);
     }
   }, [user?.uid]);
 

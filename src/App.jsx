@@ -59,10 +59,10 @@ function AppShell() {
   const handleLogout = async () => {
     try {
       await logout();
-      toast.success("Sesion cerrada");
+      toast.success("Sesión cerrada");
     } catch (error) {
       console.error(error);
-      toast.error("No se pudo cerrar sesion");
+      toast.error("No se pudo cerrar sesión");
     }
   };
 
@@ -132,7 +132,7 @@ function AppShell() {
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#0a2b6e] hover:bg-[#081f52] text-white"
           >
             <LogOut className="w-4 h-4" />
-            Cerrar sesion
+            Cerrar sesión
           </button>
           <div className="text-center text-sm text-gray-500">
             {new Date().getFullYear()} NexoFin

@@ -12,7 +12,7 @@ test.skip(
 async function login(page) {
   await page.goto("/login");
   await page.getByPlaceholder("Correo").fill(E2E_EMAIL);
-  await page.getByPlaceholder("Contrasena").fill(E2E_PASSWORD);
+  await page.getByPlaceholder("Contraseña").fill(E2E_PASSWORD);
   await page.getByRole("button", { name: "Entrar" }).click();
 
   await page.waitForTimeout(1000);
@@ -27,17 +27,17 @@ async function login(page) {
 async function handlePostLoginRedirects(page) {
   if (page.url().includes("/verify-email")) {
     throw new Error(
-      "La cuenta E2E no esta verificada. Verificala para poder correr pruebas automatizadas."
+      "La cuenta E2E no está verificada. Verificala para poder correr pruebas automatizadas."
     );
   }
 
   if (page.url().includes("/onboarding")) {
-    await page.getByPlaceholder("Como quieres que te llamemos").fill("QA E2E");
+    await page.getByPlaceholder("Cómo quieres que te llamemos").fill("QA E2E");
     await page.getByRole("button", { name: "Guardar y continuar" }).click();
   }
 }
 
-test("login + crear + editar + eliminar transaccion", async ({ page }) => {
+test("login + crear + editar + eliminar transacción", async ({ page }) => {
   const uniqueTag = `E2E-${Date.now()}`;
 
   await login(page);
@@ -54,28 +54,28 @@ test("login + crear + editar + eliminar transaccion", async ({ page }) => {
   await page.getByPlaceholder("Notas (opcional)").fill(uniqueTag);
   await page.getByRole("button", { name: "Guardar" }).click();
 
-  await expect(page.getByText("Transaccion anadida correctamente")).toBeVisible();
+  await expect(page.getByText("Transacción añadida correctamente")).toBeVisible();
 
   await page.getByRole("link", { name: "Transacciones" }).click();
   await expect(page).toHaveURL(/\/transactions$/);
 
-  await page.getByPlaceholder("Categoria, metodo, nota o monto").fill(uniqueTag);
+  await page.getByPlaceholder("Categoría, método, nota o monto").fill(uniqueTag);
   await expect(page.getByText("Movimientos: 1")).toBeVisible();
 
   const firstCard = page.locator("li").first();
-  await firstCard.getByTitle("Editar transaccion").click();
+  await firstCard.getByTitle("Editar transacción").click();
   await page.getByPlaceholder("Monto").fill("234.56");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByText("Transaccion actualizada correctamente")).toBeVisible();
+  await expect(page.getByText("Transacción actualizada correctamente")).toBeVisible();
   await expect(firstCard.getByText("- S/ 234.56")).toBeVisible();
 
-  await firstCard.getByTitle("Eliminar transaccion").click();
+  await firstCard.getByTitle("Eliminar transacción").click();
   await page.getByRole("button", { name: "Eliminar" }).click();
-  await expect(page.getByText("Transaccion eliminada correctamente")).toBeVisible();
+  await expect(page.getByText("Transacción eliminada correctamente")).toBeVisible();
   await expect(page.getByText("No hay transacciones para mostrar.")).toBeVisible();
 });
 
-test("login + crear + eliminar meta con categoria temporal", async ({ page }) => {
+test("login + crear + eliminar meta con categoría temporal", async ({ page }) => {
   const uniqueTag = Date.now();
   const categoryName = `E2E Meta ${uniqueTag}`;
 
@@ -84,10 +84,10 @@ test("login + crear + eliminar meta con categoria temporal", async ({ page }) =>
   await expect(page).toHaveURL(/\/$/);
 
   await page.getByTestId("open-transaction-modal").click();
-  await page.getByTitle("Nueva categoria").click();
+  await page.getByTitle("Nueva categoría").click();
   await page.getByPlaceholder("Escribe el nombre").fill(categoryName);
   await page.getByRole("button", { name: "Agregar" }).click();
-  await expect(page.getByText(`Categoria "${categoryName}" anadida correctamente.`)).toBeVisible();
+  await expect(page.getByText(`Categoría "${categoryName}" añadida correctamente.`)).toBeVisible();
   await page.getByLabel("Cerrar modal").click();
 
   await page.getByRole("link", { name: "Metas" }).click();
@@ -104,7 +104,7 @@ test("login + crear + eliminar meta con categoria temporal", async ({ page }) =>
   await expect(budgetCard).toHaveCount(0);
 
   await page.getByRole("link", { name: "Ajustes" }).click();
-  await page.getByRole("button", { name: "Categorias" }).click();
+  await page.getByRole("button", { name: "Categorías" }).click();
   const categoryRow = page.getByTestId("category-row").filter({ hasText: categoryName });
   await expect(categoryRow).toBeVisible();
   await categoryRow.getByTitle("Eliminar").click();

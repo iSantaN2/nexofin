@@ -1,4 +1,4 @@
-﻿import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
@@ -24,7 +24,7 @@ if (typeof window !== "undefined") {
       if (supported) getAnalytics(app);
     })
     .catch((err) => {
-      console.warn("Analytics no esta disponible:", err.message);
+      console.warn("Analytics no está disponible:", err.message);
     });
 }
 

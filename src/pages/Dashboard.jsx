@@ -1,4 +1,4 @@
-﻿import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { TransactionsContext } from "../context/TransactionsContext";
 import { AppContext } from "../context/AppContext";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
@@ -118,8 +118,8 @@ export default function Dashboard() {
       .forEach((t) => {
         const name =
           typeof t.category === "object"
-            ? t.category?.name || "Sin categoria"
-            : t.category || "Sin categoria";
+            ? t.category?.name || "Sin categoría"
+            : t.category || "Sin categoría";
         totals[name] = (totals[name] || 0) + (Number(t.amount) || 0);
       });
 
@@ -236,8 +236,8 @@ export default function Dashboard() {
       const monto = Number(t.amount) || 0;
       const name =
         typeof t.category === "object"
-          ? t.category?.name || "Sin categoria"
-          : t.category || "Sin categoria";
+          ? t.category?.name || "Sin categoría"
+          : t.category || "Sin categoría";
       categorias[name] = (categorias[name] || 0) + monto;
     });
     return Object.entries(categorias).map(([name, value]) => ({ name, value }));
@@ -261,8 +261,8 @@ export default function Dashboard() {
       }
       return id;
     } catch (err) {
-      console.error("Error al anadir transaccion:", err);
-      toast.error("Error al anadir transaccion");
+      console.error("Error al añadir transacción:", err);
+      toast.error("Error al añadir transacción");
       return null;
     } finally {
       setLoading(false);
@@ -293,7 +293,7 @@ export default function Dashboard() {
   const comparisonPrefix = monthComparison.difference > 0 ? "+" : "";
   const comparisonDirection =
     monthComparison.difference > 0
-      ? "mas"
+      ? "más"
       : monthComparison.difference < 0
       ? "menos"
       : "igual";
@@ -383,11 +383,11 @@ export default function Dashboard() {
 
     const hasMovementToday = transactions.some((tx) => getDayKey(tx.date) === todayKey);
     if (!hasMovementToday) {
-      toast("Recordatorio: hoy aun no registras movimientos.");
+      toast("Recordatorio: hoy aún no registras movimientos.");
       createNotification({
         type: "daily_reminder",
         title: "Recordatorio diario",
-        message: "Hoy aun no registras movimientos. Agrega tus ingresos o gastos para mantener tu control al dia.",
+        message: "Hoy aún no registras movimientos. Agrega tus ingresos o gastos para mantener tu control al día.",
         recommendation: "Registra al menos un movimiento hoy para mantener tu historial financiero actualizado.",
         actionPath: "/transactions",
         severity: "info",
@@ -412,8 +412,8 @@ export default function Dashboard() {
     createNotification({
       type: "unusual_expense",
       title: `Gasto inusual: ${mainUnusualExpense.category}`,
-      message: `Esta categoria subio ${formatCurrency(mainUnusualExpense.increaseAmount)} frente al mes anterior.`,
-      recommendation: `Revisa las transacciones de ${mainUnusualExpense.category} y confirma si fue un gasto puntual o un nuevo patron.`,
+      message: `Esta categoría subio ${formatCurrency(mainUnusualExpense.increaseAmount)} frente al mes anterior.`,
+      recommendation: `Revisa las transacciones de ${mainUnusualExpense.category} y confirma si fue un gasto puntual o un nuevo patrón.`,
       actionPath: `/transactions?category=${encodeURIComponent(mainUnusualExpense.category)}`,
       severity: "warning",
       sourceKey: `unusual-${selectedMonth}-${mainUnusualExpense.category}`,
@@ -428,10 +428,10 @@ export default function Dashboard() {
 
     createNotification({
       type: "budget_projection",
-      title: `Proyeccion de meta: ${criticalBudgetProjection.category}`,
+      title: `Proyección de meta: ${criticalBudgetProjection.category}`,
       message: criticalBudgetProjection.estimatedExceedDay
-        ? `Con tu ritmo actual podrias superar la meta cerca del dia ${criticalBudgetProjection.estimatedExceedDay}.`
-        : `Con tu ritmo actual podrias cerrar en ${formatCurrency(criticalBudgetProjection.projectedSpend)}.`,
+        ? `Con tu ritmo actual podrías superar la meta cerca del día ${criticalBudgetProjection.estimatedExceedDay}.`
+        : `Con tu ritmo actual podrías cerrar en ${formatCurrency(criticalBudgetProjection.projectedSpend)}.`,
       recommendation: `Reduce el ritmo de gasto en ${criticalBudgetProjection.category} o ajusta la meta si este mes tiene gastos excepcionales.`,
       actionPath: `/transactions?category=${encodeURIComponent(criticalBudgetProjection.category)}`,
       severity: "warning",
@@ -521,7 +521,7 @@ export default function Dashboard() {
               <p className="text-xs text-gray-500">{comparisonPercentText}</p>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Aun no hay base de comparacion.</p>
+            <p className="text-sm text-gray-500">Aún no hay base de comparacion.</p>
           )}
         </SectionPanel>
       </div>
@@ -556,7 +556,7 @@ export default function Dashboard() {
           <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
             <div className="flex items-center gap-2 text-amber-700">
               <Target className="w-4 h-4" />
-              <p className="text-sm font-semibold">Meta critica</p>
+              <p className="text-sm font-semibold">Meta crítica</p>
             </div>
             {criticalBudget ? (
               <>
@@ -566,14 +566,14 @@ export default function Dashboard() {
                 <p className="text-sm text-slate-600">{criticalBudget.category}</p>
               </>
             ) : (
-              <p className="mt-2 text-sm text-slate-500">Aun no hay metas para evaluar.</p>
+              <p className="mt-2 text-sm text-slate-500">Aún no hay metas para evaluar.</p>
             )}
           </div>
 
           <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
             <div className="flex items-center gap-2 text-emerald-700">
               <AlertTriangle className="w-4 h-4" />
-              <p className="text-sm font-semibold">Recomendacion</p>
+              <p className="text-sm font-semibold">Recomendación</p>
             </div>
             <p className="mt-2 text-sm text-slate-600">{financialRecommendation}</p>
             {savingsRate !== null ? (
@@ -610,7 +610,7 @@ export default function Dashboard() {
           <div className="rounded-lg border border-sky-100 bg-sky-50 p-4">
             <div className="flex items-center gap-2 text-sky-700">
               <TrendingUp className="w-4 h-4" />
-              <p className="text-sm font-semibold">Proyeccion de meta</p>
+              <p className="text-sm font-semibold">Proyección de meta</p>
             </div>
             {criticalBudgetProjection ? (
               <>
@@ -618,9 +618,9 @@ export default function Dashboard() {
                   {criticalBudgetProjection.category}
                 </p>
                 <p className="text-sm text-slate-600">
-                  Podrias cerrar en {formatCurrency(criticalBudgetProjection.projectedSpend)}
+                  Podrías cerrar en {formatCurrency(criticalBudgetProjection.projectedSpend)}
                   {criticalBudgetProjection.estimatedExceedDay
-                    ? ` y superar la meta cerca del dia ${criticalBudgetProjection.estimatedExceedDay}.`
+                    ? ` y superar la meta cerca del día ${criticalBudgetProjection.estimatedExceedDay}.`
                     : "."}
                 </p>
               </>
@@ -647,7 +647,7 @@ export default function Dashboard() {
           {budgetStatusItems.length === 0 ? (
             <div className="space-y-3 flex-1">
               <p className="text-sm text-gray-500">
-                No hay metas configuradas para este mes. Puedes crearlas en la seccion Metas.
+                No hay metas configuradas para este mes. Puedes crearlas en la sección Metas.
               </p>
               <Link
                 to="/budgets"
@@ -694,7 +694,7 @@ export default function Dashboard() {
 
         <div className="bg-white shadow rounded-2xl p-6 h-full flex flex-col">
           <div className="flex items-center justify-between gap-3 mb-4 min-h-9">
-            <h3 className="font-semibold">Distribucion por categoria</h3>
+            <h3 className="font-semibold">Distribución por categoría</h3>
             <span className="inline-flex px-3 py-1.5 text-sm opacity-0 select-none" aria-hidden>
               Placeholder
             </span>
@@ -813,7 +813,7 @@ export default function Dashboard() {
                     <CategoryIcon category={t.category} type={t.type} />
                     <div>
                       <p className="font-semibold text-gray-800">
-                        {t.category || "Sin categoria"}
+                        {t.category || "Sin categoría"}
                       </p>
                       <p className="text-xs text-gray-500">{formatDate(t.date)}</p>
                       <p className="text-xs text-gray-400">
@@ -856,7 +856,7 @@ export default function Dashboard() {
       <button
         onClick={() => setIsAddModalOpen(true)}
         data-testid="open-transaction-modal"
-        aria-label="Anadir transaccion"
+        aria-label="Añadir transacción"
         className="fixed bottom-6 right-6 bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg transition-all duration-200 hover:scale-110"
       >
         +

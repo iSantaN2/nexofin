@@ -27,7 +27,7 @@ describe("formatters", () => {
     expect(getPreviousMonthKey("2026-01")).toBe("2025-12");
   });
 
-  it("normaliza fechas de Firestore y valores invalidos", () => {
+  it("normaliza fechas de Firestore y valores inválidos", () => {
     expect(toDate({ seconds: 1780578000 })).toBeInstanceOf(Date);
     expect(toDate("fecha mala")).toBeNull();
   });

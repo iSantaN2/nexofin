@@ -1,11 +1,11 @@
-﻿import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 export default function ConfirmModal({
   show,
   title = "Estas seguro?",
-  message = "Esta accion no se puede deshacer.",
+  message = "Esta acción no se puede deshacer.",
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   type = "warning", // "warning" | "success" | "info"

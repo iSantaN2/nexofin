@@ -24,8 +24,8 @@ import UiMetricCard from "../components/ui/MetricCard";
 dayjs.locale("es");
 
 const PERIODS = [
-  { value: "7days", label: "Ultimos 7 dias" },
-  { value: "30days", label: "Ultimos 30 dias" },
+  { value: "7days", label: "Últimos 7 días" },
+  { value: "30days", label: "Últimos 30 días" },
   { value: "week", label: "Esta semana" },
   { value: "month", label: "Este mes" },
   { value: "year", label: "Este anio" },
@@ -57,7 +57,7 @@ function getPeriodRange(filter) {
     const start = now.subtract(6, "day").startOf("day");
     const end = now.endOf("day");
     return {
-      label: "Ultimos 7 dias",
+      label: "Últimos 7 días",
       start,
       end,
       previousStart: start.subtract(7, "day"),
@@ -69,7 +69,7 @@ function getPeriodRange(filter) {
     const start = now.subtract(29, "day").startOf("day");
     const end = now.endOf("day");
     return {
-      label: "Ultimos 30 dias",
+      label: "Últimos 30 días",
       start,
       end,
       previousStart: start.subtract(30, "day"),
@@ -166,7 +166,7 @@ function getHealth(totals) {
   }
 
   if (savingsRate >= 5) {
-    return { label: "Atencion", color: "text-amber-600", description: `Ahorro ${savingsRate.toFixed(1)}%` };
+    return { label: "Atención", color: "text-amber-600", description: `Ahorro ${savingsRate.toFixed(1)}%` };
   }
 
   return { label: "Riesgo", color: "text-red-600", description: `Ahorro ${savingsRate.toFixed(1)}%` };
@@ -194,8 +194,8 @@ export default function Reports() {
             ...tx,
             amount: Number(tx.amount) || 0,
             type: normalizeType(tx.type),
-            category: normalizeField(tx.category, "Sin categoria"),
-            account: normalizeField(tx.account, "Sin metodo"),
+            category: normalizeField(tx.category, "Sin categoría"),
+            account: normalizeField(tx.account, "Sin método"),
             notes: tx.notes || "",
             date,
             createdAt,
@@ -327,14 +327,14 @@ export default function Reports() {
     }
 
     if (previousTransactions.length > 0) {
-      const direction = comparison.diffExpense > 0 ? "mas" : "menos";
+      const direction = comparison.diffExpense > 0 ? "más" : "menos";
       lines.push(
         `Gastaste S/ ${Math.abs(comparison.diffExpense).toFixed(2)} ${direction} que el periodo anterior.`
       );
     }
 
     if (methodsBreakdown[0]) {
-      lines.push(`Tu metodo mas usado fue ${methodsBreakdown[0].name}.`);
+      lines.push(`Tu método más usado fue ${methodsBreakdown[0].name}.`);
     }
 
     return lines;
@@ -344,12 +344,12 @@ export default function Reports() {
     const metaRows = [
       ["Reporte", "NexoFin"],
       ["Periodo", PERIODS.find((item) => item.value === filter)?.label || "Todo"],
-      ["Categoria", selectedCategory],
+      ["Categoría", selectedCategory],
       ["Generado", dayjs().format("DD/MM/YYYY HH:mm")],
       [],
     ];
 
-    const headers = ["Fecha", "Tipo", "Categoria", "Metodo", "Monto", "Notas"];
+    const headers = ["Fecha", "Tipo", "Categoría", "Método", "Monto", "Notas"];
     const rows = visibleTransactions.map((tx) => [
       formatAccountingDateTime(tx),
       tx.type,
@@ -390,7 +390,7 @@ export default function Reports() {
     const summaryRows = [
       ["Reporte", "NexoFin"],
       ["Periodo", periodLabel],
-      ["Categoria", selectedCategory],
+      ["Categoría", selectedCategory],
       ["Generado", dayjs().format("DD/MM/YYYY HH:mm")],
       [],
       ["Indicador", "Monto"],
@@ -404,8 +404,8 @@ export default function Reports() {
     const movementRows = visibleTransactions.map((tx) => ({
       Fecha: formatAccountingDateTime(tx),
       Tipo: tx.type,
-      Categoria: tx.category,
-      Metodo: tx.account,
+      Categoría: tx.category,
+      Método: tx.account,
       Monto: tx.amount,
       Notas: tx.notes || "",
     }));
@@ -434,12 +434,12 @@ export default function Reports() {
     doc.text("Reporte financiero - NexoFin", 14, 15);
     doc.setFontSize(10);
     doc.text(`Periodo: ${PERIODS.find((item) => item.value === filter)?.label || "Todo"}`, 14, 22);
-    doc.text(`Categoria: ${selectedCategory}`, 14, 27);
+    doc.text(`Categoría: ${selectedCategory}`, 14, 27);
     doc.text(`Generado: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 14, 32);
 
     autoTable(doc, {
       startY: 38,
-      head: [["Fecha", "Tipo", "Categoria", "Metodo", "Monto", "Notas"]],
+      head: [["Fecha", "Tipo", "Categoría", "Método", "Monto", "Notas"]],
       body: visibleTransactions.map((tx) => [
         formatAccountingDateTime(tx),
         tx.type,
@@ -477,7 +477,7 @@ export default function Reports() {
     <div className="space-y-6">
       <PageHeader
         title="Reportes financieros"
-        description="Entiende tus patrones y toma mejores decisiones."
+        description="Entiende tus patrónes y toma mejores decisiones."
       />
 
       <SectionPanel className="space-y-4">
@@ -569,7 +569,7 @@ export default function Reports() {
               to="/transactions"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0a2b6e] text-white hover:bg-[#081f52]"
             >
-              <PlusCircle size={16} /> Agregar transaccion
+              <PlusCircle size={16} /> Agregar transacción
             </Link>
             </div>
           }
@@ -640,7 +640,7 @@ export default function Reports() {
             </div>
 
             <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-              <h3 className="text-md font-semibold mb-3">Tendencia ultimos 6 meses</h3>
+              <h3 className="text-md font-semibold mb-3">Tendencia últimos 6 meses</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -657,7 +657,7 @@ export default function Reports() {
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-              <h3 className="font-semibold mb-3">Top categorias de gasto</h3>
+              <h3 className="font-semibold mb-3">Top categorías de gasto</h3>
               {topExpenseCategories.length === 0 ? (
                 <p className="text-sm text-gray-500">Sin gastos en este periodo.</p>
               ) : (
@@ -675,7 +675,7 @@ export default function Reports() {
             </div>
 
             <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-              <h3 className="font-semibold mb-3">Gasto por metodo de pago</h3>
+              <h3 className="font-semibold mb-3">Gasto por método de pago</h3>
               {methodsBreakdown.length === 0 ? (
                 <p className="text-sm text-gray-500">Sin gastos en este periodo.</p>
               ) : (
@@ -727,8 +727,8 @@ export default function Reports() {
                   <tr className="bg-gray-100 text-left">
                     <th className="p-2">Fecha</th>
                     <th className="p-2">Tipo</th>
-                    <th className="p-2">Categoria</th>
-                    <th className="p-2">Metodo</th>
+                    <th className="p-2">Categoría</th>
+                    <th className="p-2">Método</th>
                     <th className="p-2">Monto</th>
                     <th className="p-2">Notas</th>
                   </tr>

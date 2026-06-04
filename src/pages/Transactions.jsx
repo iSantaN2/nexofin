@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Edit2, Search, Trash2, X } from "lucide-react";
@@ -105,10 +105,10 @@ export default function Transactions() {
       chips.push({ key: "type", label: `Tipo: ${typeFilter === "income" ? "Ingresos" : "Gastos"}` });
     }
     if (categoryFilter !== "all") {
-      chips.push({ key: "category", label: `Categoria: ${categoryFilter}` });
+      chips.push({ key: "category", label: `Categoría: ${categoryFilter}` });
     }
     if (methodFilter !== "all") {
-      chips.push({ key: "method", label: `Metodo: ${methodFilter}` });
+      chips.push({ key: "method", label: `Método: ${methodFilter}` });
     }
     if (startDate) {
       chips.push({ key: "startDate", label: `Desde: ${startDate}` });
@@ -179,7 +179,7 @@ export default function Transactions() {
     await deleteTransaction(confirmTarget.id);
     setShowConfirm(false);
     setConfirmTarget(null);
-    toast.success("Transaccion eliminada correctamente");
+    toast.success("Transacción eliminada correctamente");
   };
 
   return (
@@ -201,7 +201,7 @@ export default function Transactions() {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Categoria, metodo, nota o monto"
+              placeholder="Categoría, método, nota o monto"
               className="border rounded-lg p-2 pl-9 w-full"
             />
           </div>
@@ -242,7 +242,7 @@ export default function Transactions() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Categoria</label>
+          <label className="block text-sm mb-1">Categoría</label>
           <select
             value={categoryFilter}
             onChange={(e) => {
@@ -260,7 +260,7 @@ export default function Transactions() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Metodo</label>
+          <label className="block text-sm mb-1">Método</label>
           <select
             value={methodFilter}
             onChange={(e) => {
@@ -360,7 +360,7 @@ export default function Transactions() {
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <EmptyState
                 title="No hay transacciones para mostrar."
-                description="Cambia los filtros o agrega un nuevo movimiento para verlo aqui."
+                description="Cambia los filtros o agrega un nuevo movimiento para verlo aquí."
               />
             </motion.div>
           ) : (
@@ -385,7 +385,7 @@ export default function Transactions() {
                       <CategoryIcon category={transaction.category} type={transaction.type} />
                       <div>
                         <p className="font-semibold text-gray-800">
-                          {transaction.category || "Sin categoria"}
+                          {transaction.category || "Sin categoría"}
                         </p>
                         <p className="text-xs text-gray-500">{formatDate(transaction.date)}</p>
                         <p className="text-xs text-gray-400">
@@ -403,7 +403,7 @@ export default function Transactions() {
                         <button
                           onClick={() => setEditingTransaction(transaction)}
                           className="text-[#1f67ff] hover:text-[#0a2b6e] p-1 rounded-md transition"
-                          title="Editar transaccion"
+                          title="Editar transacción"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -411,7 +411,7 @@ export default function Transactions() {
                         <button
                           onClick={() => handleDeleteClick(transaction)}
                           className="text-red-500 hover:text-red-700 p-1 rounded-md transition"
-                          title="Eliminar transaccion"
+                          title="Eliminar transacción"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -469,7 +469,7 @@ export default function Transactions() {
 
       <ConfirmModal
         show={showConfirm}
-        title="Eliminar transaccion"
+        title="Eliminar transacción"
         message={`¿Seguro que deseas eliminar "${confirmTarget?.category}" por ${formatCurrency(confirmTarget?.amount)}?`}
         confirmText="Eliminar"
         onConfirm={confirmDelete}
