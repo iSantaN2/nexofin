@@ -167,10 +167,15 @@ export default function AddTransactionModal({
       : cat.type?.toLowerCase() === "gasto"
   );
 
+  const inputClass =
+    "min-h-12 w-full rounded-2xl border border-[#d6e4f7] bg-white px-4 py-3 text-[#06142e] outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10";
+  const labelClass = "mb-1.5 block text-sm font-semibold text-[#0a2b6e]";
+
   return (
-    <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn relative overflow-hidden border border-[#dbe8ff]">
-        <div className="flex items-start justify-between gap-3 border-b border-[#edf3ff] px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="relative flex max-h-[94vh] w-full max-w-lg animate-fadeIn flex-col overflow-hidden rounded-t-[2rem] border border-[#dbe8ff] bg-white shadow-[0_28px_70px_rgba(10,43,110,0.22)] sm:max-h-[90vh] sm:rounded-[1.75rem]">
+        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
+        <div className="flex items-start justify-between gap-3 border-b border-[#edf3ff] px-5 py-4 sm:px-6">
           <div>
             <h3 className="text-lg font-semibold text-[#0a2b6e]">
               {initialData ? "Editar transacción" : "Añadir transacción"}
@@ -193,12 +198,12 @@ export default function AddTransactionModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 p-5">
-          <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto px-5 pb-0 pt-5 sm:px-6">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
             <button
               type="button"
               onClick={() => setType("expense")}
-              className={`py-2 rounded-md text-sm font-semibold transition ${
+              className={`min-h-11 rounded-xl text-sm font-semibold transition ${
                 type === "expense"
                   ? "bg-white text-red-600 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -209,7 +214,7 @@ export default function AddTransactionModal({
             <button
               type="button"
               onClick={() => setType("income")}
-              className={`py-2 rounded-md text-sm font-semibold transition ${
+              className={`min-h-11 rounded-xl text-sm font-semibold transition ${
                 type === "income"
                   ? "bg-white text-emerald-600 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -219,73 +224,91 @@ export default function AddTransactionModal({
             </button>
           </div>
 
-          <div className="flex gap-2 items-center">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full border rounded-lg p-2.5"
-              required
-            >
-              <option value="">Selecciona una categoría</option>
-              {filteredCategories.map((cat) => (
-                <option key={cat.id || cat.name} value={cat.name}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={handleOpenAddCategory}
-              className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-[#1f67ff] text-white hover:bg-[#0a2b6e]"
-              title="Nueva categoría"
-              aria-label="Nueva categoría"
-            >
-              <Plus size={18} />
-            </button>
+          <div>
+            <label className={labelClass}>Categoría</label>
+            <div className="flex gap-2 items-center">
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={inputClass}
+                required
+              >
+                <option value="">Selecciona una categoría</option>
+                {filteredCategories.map((cat) => (
+                  <option key={cat.id || cat.name} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleOpenAddCategory}
+                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1f67ff] to-[#11c69a] text-white shadow-[0_12px_24px_rgba(31,103,255,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(31,103,255,0.28)]"
+                title="Nueva categoría"
+                aria-label="Nueva categoría"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
           </div>
 
-          <input
-            type="number"
-            placeholder="Monto"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            min="0.01"
-            step="0.01"
-            className="w-full border rounded-lg p-2.5 text-lg font-semibold"
-            required
-          />
+          <div>
+            <label className={labelClass}>Monto</label>
+            <input
+              type="number"
+              placeholder="Monto"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min="0.01"
+              step="0.01"
+              className={`${inputClass} text-lg font-semibold`}
+              required
+            />
+          </div>
 
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full border rounded-lg p-2.5"
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Fecha</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={inputClass}
+              />
+            </div>
 
-          <select
-            value={account}
-            onChange={(e) => setAccount(e.target.value)}
-            className="w-full border rounded-lg p-2.5"
-          >
-            {methods.map((m) => (
-              <option key={m.id || m.name} value={m.name}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+            <div>
+              <label className={labelClass}>Método</label>
+              <select
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
+                className={inputClass}
+              >
+                {methods.map((m) => (
+                  <option key={m.id || m.name} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-          <textarea
-            placeholder="Notas (opcional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full border rounded-lg p-2.5 resize-none"
-            rows={3}
-          />
+          <div>
+            <label className={labelClass}>Notas</label>
+            <textarea
+              placeholder="Notas (opcional)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className={`${inputClass} min-h-24 resize-none`}
+              rows={3}
+            />
+          </div>
 
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+          <div className="sticky bottom-0 -mx-5 flex flex-col-reverse gap-2 border-t border-[#edf3ff] bg-white/95 px-5 py-4 backdrop-blur sm:-mx-6 sm:flex-row sm:justify-end sm:px-6">
             <Button
               type="button"
               variant="neutral"
+              className="w-full sm:w-auto"
               onClick={() => {
                 resetForm();
                 onClose();
@@ -296,6 +319,7 @@ export default function AddTransactionModal({
             <Button
               type="submit"
               variant={type === "income" ? "success" : "primary"}
+              className="w-full sm:w-auto"
             >
               {initialData ? "Guardar cambios" : "Guardar"}
             </Button>
@@ -304,8 +328,9 @@ export default function AddTransactionModal({
       </div>
 
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5 border border-[#dbe8ff]">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="w-full max-w-sm rounded-t-[2rem] border border-[#dbe8ff] bg-white p-5 shadow-[0_28px_70px_rgba(10,43,110,0.22)] sm:rounded-[1.75rem]">
+            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
             <h4 className="text-base font-semibold text-[#0a2b6e] mb-1">Nueva categoría</h4>
             <p className="text-sm text-slate-500 mb-3">
               Se creará como {type === "income" ? "categoría de ingreso" : "categoría de gasto"}.
@@ -315,13 +340,14 @@ export default function AddTransactionModal({
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Escribe el nombre"
-              className="w-full border rounded-lg p-2.5 mb-4"
+              className={`${inputClass} mb-4`}
               autoFocus
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
               <Button
                 type="button"
                 variant="neutral"
+                className="w-full sm:w-auto"
                 onClick={closeCategoryModal}
                 disabled={addingCategory}
               >
@@ -330,6 +356,7 @@ export default function AddTransactionModal({
               <Button
                 type="button"
                 variant="primary"
+                className="w-full sm:w-auto"
                 onClick={handleConfirmAddCategory}
                 disabled={addingCategory || !newCategoryName.trim()}
               >
