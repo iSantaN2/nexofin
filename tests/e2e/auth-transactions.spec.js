@@ -45,7 +45,7 @@ test("login + crear + editar + eliminar transacción", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/$/);
 
-  await page.locator("button.fixed.bottom-6.right-6").click();
+  await page.getByTestId("open-transaction-modal").click();
 
   const categorySelect = page.locator('select').first();
   await categorySelect.selectOption({ index: 1 });

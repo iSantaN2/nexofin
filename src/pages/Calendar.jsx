@@ -355,7 +355,7 @@ export default function CalendarPage() {
 
       <button
         onClick={() => setShowAddModal(true)}
-        className="fixed bottom-8 right-8 bg-[#0a2b6e] text-white rounded-full p-4 shadow-lg hover:bg-[#081f52] transition"
+        className="fixed bottom-24 right-5 sm:bottom-8 sm:right-8 bg-[#0a2b6e] text-white rounded-full p-4 shadow-lg hover:bg-[#081f52] transition"
       >
         <Plus size={24} />
       </button>

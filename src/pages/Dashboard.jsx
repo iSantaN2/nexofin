@@ -861,7 +861,7 @@ export default function Dashboard() {
         onClick={() => setIsAddModalOpen(true)}
         data-testid="open-transaction-modal"
         aria-label="Añadir transacción"
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg transition-all duration-200 hover:scale-110"
+        className="fixed bottom-24 right-5 sm:bottom-6 sm:right-6 bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg transition-all duration-200 hover:scale-110"
       >
         +
       </button>
