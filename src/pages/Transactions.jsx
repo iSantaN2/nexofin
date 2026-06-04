@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Edit2, Search, Trash2, X } from "lucide-react";
-import toast from "react-hot-toast";
 import ConfirmModal from "../components/ConfirmModal";
 import AddTransactionModal from "../components/AddTransactionModal";
 import { useTransactions } from "../context/TransactionsContext";
@@ -20,8 +19,8 @@ import { formatCurrency, formatDate, formatSignedCurrency, formatTime } from "..
 const ITEMS_PER_PAGE = 10;
 
 const SORT_OPTIONS = [
-  { value: "newest", label: "Mas reciente" },
-  { value: "oldest", label: "Mas antiguo" },
+  { value: "newest", label: "Más reciente" },
+  { value: "oldest", label: "Más antiguo" },
   { value: "amount_desc", label: "Mayor monto" },
   { value: "amount_asc", label: "Menor monto" },
 ];
@@ -43,7 +42,7 @@ export default function Transactions() {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const sortLabel = SORT_OPTIONS.find((option) => option.value === sortBy)?.label || "Mas reciente";
+  const sortLabel = SORT_OPTIONS.find((option) => option.value === sortBy)?.label || "Más reciente";
 
   const categories = useMemo(() => {
     const uniqueCategories = [
@@ -179,7 +178,6 @@ export default function Transactions() {
     await deleteTransaction(confirmTarget.id);
     setShowConfirm(false);
     setConfirmTarget(null);
-    toast.success("Transacción eliminada correctamente");
   };
 
   return (
@@ -359,8 +357,27 @@ export default function Transactions() {
           {currentTransactions.length === 0 ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <EmptyState
-                title="No hay transacciones para mostrar."
-                description="Cambia los filtros o agrega un nuevo movimiento para verlo aquí."
+                title={
+                  activeFilterChips.length > 0
+                    ? "No encontramos movimientos con esos filtros."
+                    : "Aún no hay transacciones registradas."
+                }
+                description={
+                  activeFilterChips.length > 0
+                    ? "Prueba limpiar filtros o ampliar el rango de fechas para revisar más movimientos."
+                    : "Cuando agregues ingresos o gastos, aparecerán aquí con su categoría, método y fecha."
+                }
+                action={
+                  activeFilterChips.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="rounded-xl bg-[#0a2b6e] px-4 py-2 text-sm font-semibold text-white hover:bg-[#081f52]"
+                    >
+                      Limpiar filtros
+                    </button>
+                  ) : null
+                }
               />
             </motion.div>
           ) : (

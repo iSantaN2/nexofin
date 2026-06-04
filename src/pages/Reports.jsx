@@ -28,7 +28,7 @@ const PERIODS = [
   { value: "30days", label: "Últimos 30 días" },
   { value: "week", label: "Esta semana" },
   { value: "month", label: "Este mes" },
-  { value: "year", label: "Este anio" },
+  { value: "year", label: "Este año" },
   { value: "all", label: "Todo" },
 ];
 
@@ -104,7 +104,7 @@ function getPeriodRange(filter) {
   const start = now.startOf("year");
   const end = now.endOf("year");
   return {
-    label: "Anio actual",
+    label: "Año actual",
     start,
     end,
     previousStart: start.subtract(1, "year"),
@@ -477,7 +477,7 @@ export default function Reports() {
     <div className="space-y-6">
       <PageHeader
         title="Reportes financieros"
-        description="Entiende tus patrónes y toma mejores decisiones."
+        description="Entiende tus patrones y toma mejores decisiones."
       />
 
       <SectionPanel className="space-y-4">
@@ -554,8 +554,8 @@ export default function Reports() {
 
       {visibleTransactions.length === 0 ? (
         <EmptyState
-          title="No hay datos para los filtros seleccionados."
-          description="Ajusta los filtros o agrega transacciones para generar un reporte."
+          title="No hay movimientos para este reporte."
+          description="Prueba otro periodo, cambia la categoría o registra movimientos para generar métricas útiles."
           action={
             <div className="flex flex-wrap justify-center gap-2">
             <button
@@ -587,7 +587,10 @@ export default function Reports() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <SectionPanel title="Comparación vs periodo anterior" className="space-y-2">
               {previousTransactions.length === 0 ? (
-                <p className="text-sm text-gray-500">No hay base para comparar en el periodo anterior.</p>
+                <p className="text-sm text-gray-500">
+                  Aún no hay datos del periodo anterior para comparar. Cuando tengas más historial,
+                  NexoFin mostrará la diferencia automáticamente.
+                </p>
               ) : (
                 <>
                   <p className="text-sm text-gray-600">
@@ -604,7 +607,7 @@ export default function Reports() {
                   <p className="text-sm text-gray-500">
                     {comparison.pctBalance === null
                       ? "Sin porcentaje comparable."
-                      : `Variacion de balance: ${comparison.pctBalance.toFixed(1)}%`}
+                      : `Variación de balance: ${comparison.pctBalance.toFixed(1)}%`}
                   </p>
                 </>
               )}
@@ -659,7 +662,7 @@ export default function Reports() {
             <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
               <h3 className="font-semibold mb-3">Top categorías de gasto</h3>
               {topExpenseCategories.length === 0 ? (
-                <p className="text-sm text-gray-500">Sin gastos en este periodo.</p>
+                <p className="text-sm text-gray-500">No hay gastos en este periodo.</p>
               ) : (
                 <ul className="space-y-2">
                   {topExpenseCategories.map((item) => (
@@ -677,7 +680,7 @@ export default function Reports() {
             <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
               <h3 className="font-semibold mb-3">Gasto por método de pago</h3>
               {methodsBreakdown.length === 0 ? (
-                <p className="text-sm text-gray-500">Sin gastos en este periodo.</p>
+                <p className="text-sm text-gray-500">No hay gastos en este periodo.</p>
               ) : (
                 <ul className="space-y-2">
                   {methodsBreakdown.map((item) => (

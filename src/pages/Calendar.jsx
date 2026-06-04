@@ -178,7 +178,7 @@ export default function CalendarPage() {
     <div className="flex flex-col gap-4 pb-12">
       <PageHeader
         title="Calendario financiero"
-        description="Revisa movimientos por día y detecta patrónes semanales."
+        description="Revisa movimientos por día y detecta patrones semanales."
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -320,8 +320,18 @@ export default function CalendarPage() {
       <SectionPanel title={dayjs(selectedDate).format("D MMMM YYYY")}>
         {selectedDayTransactions.length === 0 ? (
           <EmptyState
-            title="No hay transacciones este día."
-            description="Agrega un movimiento para verlo reflejado en el calendario."
+            title="Este día aún no tiene movimientos."
+            description="Registra un ingreso o gasto para verlo reflejado en el calendario y en tus reportes."
+            action={
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => setShowAddModal(true)}
+              >
+                <Plus size={16} />
+                Agregar movimiento
+              </Button>
+            }
           />
         ) : (
           <ul className="space-y-2">

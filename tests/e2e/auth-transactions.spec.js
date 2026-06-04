@@ -72,7 +72,7 @@ test("login + crear + editar + eliminar transacción", async ({ page }) => {
   await firstCard.getByTitle("Eliminar transacción").click();
   await page.getByRole("button", { name: "Eliminar" }).click();
   await expect(page.getByText("Transacción eliminada correctamente")).toBeVisible();
-  await expect(page.getByText("No hay transacciones para mostrar.")).toBeVisible();
+  await expect(page.getByText("No encontramos movimientos con esos filtros.")).toBeVisible();
 });
 
 test("login + crear + eliminar meta con categoría temporal", async ({ page }) => {

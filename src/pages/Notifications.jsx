@@ -20,15 +20,15 @@ import { formatDateTime } from "../utils/formatters";
 
 const FILTERS = [
   { key: "all", label: "Todas" },
-  { key: "unread", label: "No leidas" },
-  { key: "read", label: "Leidas" },
+  { key: "unread", label: "No leídas" },
+  { key: "read", label: "Leídas" },
   { key: "resolved", label: "Resueltas" },
 ];
 
 const PRIORITY_GROUPS = [
   {
     key: "danger",
-    title: "Criticas",
+    title: "Críticas",
     description: "Alertas que requieren atención inmediata.",
   },
   {
@@ -71,7 +71,7 @@ const severityStyles = {
     card: "border-red-100 bg-red-50/70",
     icon: "bg-red-100 text-red-700",
     badge: "bg-red-100 text-red-700",
-    label: "Critica",
+    label: "Crítica",
   },
 };
 
@@ -118,7 +118,7 @@ const getFallbackRecommendation = (notification) => {
         : "Reduce el ritmo de gasto para mantenerte dentro de tu meta.";
     case "budget_projection":
       return category
-        ? `Reduce el ritmo de gasto en ${category} o ajusta la meta si este mes es atipico.`
+        ? `Reduce el ritmo de gasto en ${category} o ajusta la meta si este mes es atípico.`
         : "Revisa tu ritmo de gasto antes de que la proyección se vuelva crítica.";
     case "unusual_expense":
       return category
@@ -193,13 +193,13 @@ export default function Notifications() {
 
   const handleMarkAllRead = async () => {
     await markAllNotificationsRead();
-    toast.success("Alertas marcadas como leidas");
+    toast.success("Alertas marcadas como leídas");
   };
 
   const handleMarkRead = async (id) => {
     const success = await markNotificationRead(id);
     if (success) {
-      toast.success("Alerta marcada como leida");
+      toast.success("Alerta marcada como leída");
     } else {
       toast.error("No se pudo marcar la alerta");
     }
@@ -230,7 +230,7 @@ export default function Notifications() {
         <SectionPanel className="bg-gradient-to-br from-[#0a2b6e] to-[#1f67ff] text-white">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-white/75">No leidas</p>
+              <p className="text-sm text-white/75">No leídas</p>
               <p className="mt-1 text-3xl font-bold">{unreadNotificationsCount}</p>
             </div>
             <span className="rounded-2xl bg-white/15 p-3">
@@ -244,7 +244,7 @@ export default function Notifications() {
           <p className="mt-1 text-3xl font-bold text-[#0a2b6e]">
             {summary.critical} / {summary.attention}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Criticas / Atención</p>
+          <p className="mt-1 text-xs text-slate-500">Críticas / Atención</p>
         </SectionPanel>
 
         <SectionPanel>
@@ -263,7 +263,7 @@ export default function Notifications() {
         </SectionPanel>
 
         <SectionPanel>
-          <p className="text-sm text-slate-500">Accion recomendada</p>
+          <p className="text-sm text-slate-500">Acción recomendada</p>
           <p className="mt-2 text-sm text-slate-700">{summary.suggestedAction}</p>
           <p className="mt-1 text-xs text-slate-500">Resueltas: {summary.resolved}</p>
         </SectionPanel>
@@ -279,7 +279,7 @@ export default function Notifications() {
             disabled={unreadNotificationsCount === 0}
           >
             <CheckCheck size={16} />
-            Marcar todas como leidas
+            Marcar todas como leídas
           </Button>
         }
       >
@@ -305,7 +305,23 @@ export default function Notifications() {
         ) : filteredNotifications.length === 0 ? (
           <EmptyState
             title="Sin alertas para mostrar"
-            description="Cuando NexoFin detecte metas en riesgo, gastos inusuales o recordatorios, apareceran aquí."
+            description="Cuando NexoFin detecte metas en riesgo, gastos inusuales o recordatorios, aparecerán aquí."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link
+                  to="/budgets"
+                  className="rounded-xl bg-[#0a2b6e] px-4 py-2 text-sm font-semibold text-white hover:bg-[#081f52]"
+                >
+                  Revisar metas
+                </Link>
+                <Link
+                  to="/settings"
+                  className="rounded-xl bg-[#eff8ff] px-4 py-2 text-sm font-semibold text-[#0a2b6e] hover:bg-[#e3f2ff]"
+                >
+                  Configurar alertas
+                </Link>
+              </div>
+            }
           />
         ) : (
           <div className="space-y-6">
@@ -351,7 +367,7 @@ export default function Notifications() {
                                 </span>
                               ) : (
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-                                  Leida
+                                  Leída
                                 </span>
                               )}
                             </div>
@@ -406,7 +422,7 @@ export default function Notifications() {
                               className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-medium text-[#0a2b6e] shadow-sm hover:bg-[#eff8ff]"
                             >
                               <Check size={15} />
-                              Leida
+                              Leída
                             </button>
                           ) : null}
                           <button
