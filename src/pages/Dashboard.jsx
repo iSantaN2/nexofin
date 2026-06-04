@@ -26,6 +26,7 @@ import {
   matchesTypeFilter,
   isIncomeTransaction,
 } from "../utils/finance";
+import { buildBudgetAlertNotification, getBudgetAlertMilestone } from "../utils/budgetNotifications";
 
 const APP_TIME_ZONE = "America/Lima";
 const YEAR_MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -414,49 +415,31 @@ export default function Dashboard() {
     let hasChanges = false;
 
     budgetStatusItems.forEach((item) => {
-      const key80 = `${item.category}_80`;
-      const key100 = `${item.category}_100`;
+      const milestone = getBudgetAlertMilestone(item.progress);
+      const notification = buildBudgetAlertNotification({
+        category: item.category,
+        spent: item.spent,
+        limit: item.limit,
+        monthKey: selectedMonth,
+        notificationSettings,
+      });
 
-      if (
-        item.progress >= 100 &&
-        notificationSettings?.budget100Enabled &&
-        !triggeredSet.has(key100)
-      ) {
+      if (!notification || !milestone) return;
+
+      const key = `${item.category}_${milestone}`;
+      if (triggeredSet.has(key)) return;
+
+      if (notification.severity === "danger") {
         toast.error(
           `Meta excedida en ${item.category}: gastaste S/ ${item.spent.toFixed(2)} de S/ ${item.limit.toFixed(2)}`
         );
-        createNotification({
-          type: "budget_limit",
-          title: `Meta excedida: ${item.category}`,
-          message: `Gastaste S/ ${item.spent.toFixed(2)} de S/ ${item.limit.toFixed(2)} en ${item.category}.`,
-          recommendation: `Revisa los gastos de ${item.category}. Para volver al limite necesitas reducir S/ ${Math.abs(item.remaining).toFixed(2)} o ajustar tu meta mensual.`,
-          actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
-          severity: "danger",
-          sourceKey: `budget-${selectedMonth}-${item.category}-100`,
-          monthKey: selectedMonth,
-        });
-        triggeredSet.add(key100);
-        triggeredSet.add(key80);
-        hasChanges = true;
-      } else if (
-        item.progress >= 80 &&
-        notificationSettings?.budget80Enabled &&
-        !triggeredSet.has(key80)
-      ) {
+      } else {
         toast(`Alerta: ${item.category} ya va en ${item.progress.toFixed(1)}% de su meta mensual.`);
-        createNotification({
-          type: "budget_warning",
-          title: `Meta al ${item.progress.toFixed(1)}%`,
-          message: `${item.category} ya va en S/ ${item.spent.toFixed(2)} de S/ ${item.limit.toFixed(2)}.`,
-          recommendation: `Te quedan S/ ${Math.max(0, item.remaining).toFixed(2)} para el resto del mes. Mantén esta categoria bajo control antes de llegar al 100%.`,
-          actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
-          severity: "warning",
-          sourceKey: `budget-${selectedMonth}-${item.category}-80`,
-          monthKey: selectedMonth,
-        });
-        triggeredSet.add(key80);
-        hasChanges = true;
       }
+
+      createNotification(notification);
+      triggeredSet.add(key);
+      hasChanges = true;
     });
 
     if (hasChanges) {
@@ -466,6 +449,7 @@ export default function Dashboard() {
     budgetStatusItems,
     createNotification,
     currentMonthKey,
+    notificationSettings,
     notificationSettings?.budget100Enabled,
     notificationSettings?.budget80Enabled,
     selectedMonth,

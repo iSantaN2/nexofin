@@ -5,13 +5,9 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocs,
-  limit,
   onSnapshot,
-  orderBy,
   query,
   setDoc,
-  startAfter,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -25,8 +21,6 @@ const DEFAULT_NOTIFICATION_SETTINGS = Object.freeze({
   budget100Enabled: true,
   dailyReminderEnabled: false,
 });
-
-const NOTIFICATIONS_PAGE_SIZE = 40;
 
 const sanitizeNotificationSettings = (rawValue) => {
   if (!rawValue || typeof rawValue !== "object") {
@@ -91,11 +85,9 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const notificationsRef = useRef([]);
-  const olderNotificationsRef = useRef([]);
-  const lastNotificationDocRef = useRef(null);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
-  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
-  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [loadingMoreNotifications] = useState(false);
+  const [hasMoreNotifications] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     ...DEFAULT_NOTIFICATION_SETTINGS,
   });
@@ -159,43 +151,25 @@ export const AppProvider = ({ children }) => {
     if (!user?.uid) {
       setNotifications([]);
       setNotificationsLoading(false);
-      setLoadingMoreNotifications(false);
-      setHasMoreNotifications(false);
-      olderNotificationsRef.current = [];
-      lastNotificationDocRef.current = null;
       return undefined;
     }
 
     setNotificationsLoading(true);
-    olderNotificationsRef.current = [];
-    lastNotificationDocRef.current = null;
-    const q = query(
-      collection(db, "notifications"),
-      where("uid", "==", user.uid),
-      orderBy("createdAt", "desc"),
-      limit(NOTIFICATIONS_PAGE_SIZE)
-    );
+    const q = query(collection(db, "notifications"), where("uid", "==", user.uid));
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        lastNotificationDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
-        setHasMoreNotifications(snapshot.docs.length === NOTIFICATIONS_PAGE_SIZE);
-
-        const realtimeData = snapshot.docs
+        const data = snapshot.docs
           .map((docItem) => ({
             id: docItem.id,
             ...docItem.data(),
-          }));
-        const realtimeIds = new Set(realtimeData.map((item) => item.id));
-        const preservedOlder = olderNotificationsRef.current.filter(
-          (item) => !realtimeIds.has(item.id)
-        );
-        const data = [...realtimeData, ...preservedOlder].sort((a, b) => {
-          const dateA = new Date(a.createdAt || 0).getTime();
-          const dateB = new Date(b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
+          }))
+          .sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
+            return dateB - dateA;
+          });
 
         setNotifications(data);
         setNotificationsLoading(false);
@@ -210,46 +184,8 @@ export const AppProvider = ({ children }) => {
   }, [user?.uid]);
 
   const loadMoreNotifications = useCallback(async () => {
-    if (!user?.uid || loadingMoreNotifications || !lastNotificationDocRef.current) return;
-
-    setLoadingMoreNotifications(true);
-    try {
-      const nextQuery = query(
-        collection(db, "notifications"),
-        where("uid", "==", user.uid),
-        orderBy("createdAt", "desc"),
-        startAfter(lastNotificationDocRef.current),
-        limit(NOTIFICATIONS_PAGE_SIZE)
-      );
-      const snapshot = await getDocs(nextQuery);
-      lastNotificationDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
-      setHasMoreNotifications(snapshot.docs.length === NOTIFICATIONS_PAGE_SIZE);
-
-      const newItems = snapshot.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      }));
-
-      const existingIds = new Set(notificationsRef.current.map((item) => item.id));
-      const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id));
-      olderNotificationsRef.current = [...olderNotificationsRef.current, ...uniqueNewItems];
-
-      setNotifications((previous) => {
-        const previousIds = new Set(previous.map((item) => item.id));
-        return [...previous, ...uniqueNewItems.filter((item) => !previousIds.has(item.id))].sort(
-          (a, b) => {
-            const dateA = new Date(a.createdAt || 0).getTime();
-            const dateB = new Date(b.createdAt || 0).getTime();
-            return dateB - dateA;
-          }
-        );
-      });
-    } catch (error) {
-      console.error("Error al cargar mas notificaciones:", error);
-    } finally {
-      setLoadingMoreNotifications(false);
-    }
-  }, [loadingMoreNotifications, user?.uid]);
+    return null;
+  }, []);
 
   const updateNotificationSettings = useCallback(async (partialSettings) => {
     if (!user?.uid) return;
@@ -292,6 +228,7 @@ export const AppProvider = ({ children }) => {
     const monthKey = normalizeNotificationText(rawNotification.monthKey, 20, "");
     const recommendation = normalizeNotificationText(rawNotification.recommendation, 500, "");
     const actionPath = normalizeNotificationText(rawNotification.actionPath, 160, "");
+    const shouldReactivate = rawNotification.reactivate === true;
     const now = new Date().toISOString();
 
     try {
@@ -301,23 +238,31 @@ export const AppProvider = ({ children }) => {
           (item) => item.id === notificationId || item.sourceKey === sourceKey
         );
 
-        if (existingNotification?.status === "resolved") {
+        if (existingNotification?.status === "resolved" && !shouldReactivate) {
           return existingNotification.id;
         }
 
         const notificationRef = doc(db, "notifications", notificationId);
+        const updatePayload = {
+          type,
+          title,
+          message,
+          severity,
+          recommendation,
+          actionPath,
+          sourceKey,
+          monthKey,
+          updatedAt: now,
+        };
+
+        if (shouldReactivate) {
+          updatePayload.read = false;
+          updatePayload.status = status;
+          updatePayload.resolvedAt = null;
+        }
+
         try {
-          await updateDoc(notificationRef, {
-            type,
-            title,
-            message,
-            severity,
-            recommendation,
-            actionPath,
-            sourceKey,
-            monthKey,
-            updatedAt: now,
-          });
+          await updateDoc(notificationRef, updatePayload);
         } catch {
           await setDoc(notificationRef, {
             uid: user.uid,
@@ -371,9 +316,6 @@ export const AppProvider = ({ children }) => {
         status: "read",
         updatedAt: new Date().toISOString(),
       });
-      olderNotificationsRef.current = olderNotificationsRef.current.map((item) =>
-        item.id === id ? { ...item, read: true, status: "read", updatedAt: new Date().toISOString() } : item
-      );
       setNotifications((previous) =>
         previous.map((item) =>
           item.id === id ? { ...item, read: true, status: "read", updatedAt: new Date().toISOString() } : item
@@ -404,9 +346,6 @@ export const AppProvider = ({ children }) => {
         resolvedAt: now,
         updatedAt: now,
       });
-      olderNotificationsRef.current = olderNotificationsRef.current.map((item) =>
-        item.id === id ? { ...item, read: true, status: "resolved", resolvedAt: now, updatedAt: now } : item
-      );
       setNotifications((previous) =>
         previous.map((item) =>
           item.id === id
@@ -426,7 +365,6 @@ export const AppProvider = ({ children }) => {
 
     try {
       await deleteDoc(doc(db, "notifications", id));
-      olderNotificationsRef.current = olderNotificationsRef.current.filter((item) => item.id !== id);
       setNotifications((previous) => previous.filter((item) => item.id !== id));
     } catch (error) {
       console.error("Error al eliminar notificacion:", error);

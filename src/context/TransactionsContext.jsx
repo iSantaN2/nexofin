@@ -20,6 +20,7 @@ import {
   normalizeText,
   normalizeType,
 } from "../utils/validation";
+import { buildBudgetAlertNotification } from "../utils/budgetNotifications";
 
 export const TransactionsContext = createContext();
 
@@ -40,6 +41,10 @@ function getMonthKey(value) {
 
 function isIncomeTransaction(transaction) {
   return transaction?.type === "Ingreso" || transaction?.type === "income";
+}
+
+function getCategoryValue(value) {
+  return typeof value === "object" ? value?.name || "" : value || "";
 }
 
 function getUnusualExpenseSignal(transaction, history) {
@@ -72,7 +77,7 @@ function getUnusualExpenseSignal(transaction, history) {
 
 export function TransactionsProvider({ children }) {
   const { user } = useAuth();
-  const { createNotification } = useContext(AppContext);
+  const { budgets, createNotification, notificationSettings } = useContext(AppContext);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -143,9 +148,10 @@ export function TransactionsProvider({ children }) {
         return null;
       }
       const docRef = await addDoc(collection(db, "transactions"), cleanData);
+      const monthKey = getMonthKey(cleanData.date);
+
       const unusualSignal = getUnusualExpenseSignal(cleanData, transactions);
       if (unusualSignal) {
-        const monthKey = getMonthKey(cleanData.date);
         await createNotification({
           type: "unusual_expense",
           title: `Gasto inusual: ${cleanData.category}`,
@@ -157,6 +163,34 @@ export function TransactionsProvider({ children }) {
           monthKey,
         });
       }
+
+      if (!isIncomeTransaction(cleanData)) {
+        const activeBudget = budgets.find(
+          (item) => item.category === cleanData.category && item.monthKey === monthKey
+        );
+
+        if (activeBudget) {
+          const spentBeforeNewTransaction = transactions
+            .filter((item) => !isIncomeTransaction(item))
+            .filter((item) => getMonthKey(item.date) === monthKey)
+            .filter((item) => getCategoryValue(item.category) === cleanData.category)
+            .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+          const budgetNotification = buildBudgetAlertNotification({
+            category: cleanData.category,
+            spent: spentBeforeNewTransaction + cleanData.amount,
+            limit: activeBudget.limitAmount,
+            monthKey,
+            notificationSettings,
+            reactivate: true,
+          });
+
+          if (budgetNotification) {
+            await createNotification(budgetNotification);
+          }
+        }
+      }
+
       toast.success("Transaccion anadida correctamente", { id: toastId });
       return docRef.id;
     } catch (error) {

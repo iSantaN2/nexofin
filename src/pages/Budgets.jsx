@@ -10,6 +10,7 @@ import EmptyState from "../components/ui/EmptyState";
 import MetricCard from "../components/ui/MetricCard";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
+import { buildBudgetAlertNotification } from "../utils/budgetNotifications";
 
 const APP_TIME_ZONE = "America/Lima";
 const MONTH_KEY_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -368,32 +369,35 @@ export default function Budgets() {
     if (!user?.uid) return;
     if (selectedMonth !== getCurrentMonthKey()) return;
     if (!budgetCards.length) return;
-    if (!notificationSettings?.budget80Enabled && !notificationSettings?.budget100Enabled) return;
 
     budgetCards.forEach((item) => {
-      if (item.progress >= 100 && notificationSettings?.budget100Enabled) {
-        createNotification({
-          type: "budget_limit",
-          title: `Meta excedida: ${item.category}`,
-          message: `Gastaste ${formatMoney(item.spent)} de ${formatMoney(item.limit)} en ${item.category}.`,
-          recommendation: `Revisa los gastos de ${item.category}. Para volver al limite necesitas reducir ${formatMoney(Math.abs(item.remaining))} o ajustar tu meta mensual.`,
-          actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
-          severity: "danger",
-          sourceKey: `budget-${selectedMonth}-${item.category}-100`,
-          monthKey: selectedMonth,
-        });
+      const budgetNotification = buildBudgetAlertNotification({
+        category: item.category,
+        spent: item.spent,
+        limit: item.limit,
+        monthKey: selectedMonth,
+        notificationSettings,
+      });
+
+      if (budgetNotification) {
+        createNotification(budgetNotification);
+      }
+
+      if (item.progress >= 100) {
         return;
       }
 
-      if (item.progress >= 80 && notificationSettings?.budget80Enabled) {
+      if (item.projectedExceeded) {
         createNotification({
-          type: "budget_warning",
-          title: `Meta en riesgo: ${item.category}`,
-          message: `${item.category} ya va en ${item.progress.toFixed(1)}% de su meta mensual.`,
-          recommendation: `Te quedan ${formatMoney(Math.max(0, item.remaining))} para el resto del mes. Intenta mantener los proximos gastos de ${item.category} por debajo de ese monto.`,
+          type: "budget_projection",
+          title: `Proyeccion de meta: ${item.category}`,
+          message: item.estimatedExceedDay
+            ? `Con tu ritmo actual podrias superar la meta cerca del dia ${item.estimatedExceedDay}.`
+            : `Con tu ritmo actual podrias cerrar en ${formatMoney(item.projectedSpend)}.`,
+          recommendation: `Reduce el ritmo de gasto en ${item.category} o ajusta la meta si este mes tiene gastos excepcionales.`,
           actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
           severity: "warning",
-          sourceKey: `budget-${selectedMonth}-${item.category}-80`,
+          sourceKey: `projection-${selectedMonth}-${item.category}`,
           monthKey: selectedMonth,
         });
       }
@@ -401,6 +405,7 @@ export default function Budgets() {
   }, [
     budgetCards,
     createNotification,
+    notificationSettings,
     notificationSettings?.budget100Enabled,
     notificationSettings?.budget80Enabled,
     selectedMonth,
