@@ -24,7 +24,7 @@ import { usePaymentMethods } from "../context/PaymentMethodsContext";
 import { useAuth } from "../context/AuthContext";
 import { AppContext } from "../context/AppContext";
 import Button from "../components/ui/Button";
-import EmptyState from "../components/ui/EmptyState";
+import ConfirmModal from "../components/ConfirmModal";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
 
@@ -122,6 +122,18 @@ function SettingsCard({ title, description, icon: Icon, children, tone = "defaul
         </div>
       </div>
       {children}
+    </div>
+  );
+}
+
+function SettingsEmptyState({ icon: Icon, title, description }) {
+  return (
+    <div className="rounded-[1.5rem] border border-dashed border-[#cfe0fb] bg-[#f8fbff] p-6 text-center">
+      <span className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#0a2b6e] shadow-sm">
+        <Icon size={20} />
+      </span>
+      <p className="font-bold text-[#06142e]">{title}</p>
+      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">{description}</p>
     </div>
   );
 }
@@ -785,6 +797,7 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("gasto");
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
@@ -807,6 +820,14 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
     await editCategory(id, { name: trimmed, type: editType });
     setEditingId(null);
     setEditName("");
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+
+    await deleteCategory(deleteTarget.id);
+    toast.success("Categoría eliminada");
+    setDeleteTarget(null);
   };
 
   const expenseCategories = categories.filter((item) => item.type === "gasto");
@@ -851,6 +872,10 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
           Agregar
         </Button>
         </div>
+        <p className="mt-3 rounded-2xl bg-white/75 px-4 py-3 text-sm leading-6 text-slate-500">
+          Consejo: usa nombres claros como Comida, Transporte o Sueldo. Si eliminas una categoría,
+          tus transacciones antiguas conservarán su nombre, pero ya no aparecerá como opción nueva.
+        </p>
       </div>
 
       <CategoryList
@@ -863,7 +888,7 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
         setEditType={setEditType}
         setEditingId={setEditingId}
         onSave={handleSave}
-        onDelete={deleteCategory}
+        onDelete={setDeleteTarget}
       />
 
       <CategoryList
@@ -876,7 +901,18 @@ function CategorySettings({ categories, addCategory, editCategory, deleteCategor
         setEditType={setEditType}
         setEditingId={setEditingId}
         onSave={handleSave}
-        onDelete={deleteCategory}
+        onDelete={setDeleteTarget}
+      />
+
+      <ConfirmModal
+        show={!!deleteTarget}
+        title="Eliminar categoría"
+        message={`¿Seguro que deseas eliminar "${deleteTarget?.name}"? Las transacciones antiguas conservarán ese nombre.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="warning"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
     </div>
   );
@@ -903,7 +939,11 @@ function CategoryList({
         </span>
       </div>
       {items.length === 0 ? (
-        <EmptyState title="Sin registros" description="Agrega un elemento para verlo en esta lista." />
+        <SettingsEmptyState
+          icon={LayoutGrid}
+          title="Aún no hay registros"
+          description="Cuando agregues elementos de este tipo aparecerán aquí para editarlos o eliminarlos."
+        />
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
@@ -966,7 +1006,7 @@ function CategoryList({
                 )}
                 <button
                   type="button"
-                  onClick={() => onDelete(item.id)}
+                  onClick={() => onDelete(item)}
                   className="rounded-xl bg-red-100 p-2 text-red-600 transition hover:bg-red-200"
                   title="Eliminar"
                 >
@@ -985,6 +1025,7 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
   const [newMethod, setNewMethod] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const handleAdd = async () => {
     if (!newMethod.trim()) {
@@ -1005,6 +1046,14 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
     await editMethod(id, editName);
     setEditingId(null);
     setEditName("");
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+
+    await deleteMethod(deleteTarget.id);
+    toast.success("Método de pago eliminado");
+    setDeleteTarget(null);
   };
 
   return (
@@ -1036,10 +1085,18 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
           Agregar
         </Button>
         </div>
+        <p className="mt-3 rounded-2xl bg-white/75 px-4 py-3 text-sm leading-6 text-slate-500">
+          Puedes registrar efectivo, tarjetas, transferencias o billeteras. Al eliminar un método,
+          las transacciones antiguas conservarán el nombre usado.
+        </p>
       </div>
 
       {methods.length === 0 ? (
-        <EmptyState title="Sin métodos registrados" description="Agrega tus métodos de pago habituales." />
+        <SettingsEmptyState
+          icon={CreditCard}
+          title="Aún no hay métodos registrados"
+          description="Agrega tus formas de pago habituales para clasificar mejor cada movimiento."
+        />
       ) : (
         <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {methods.map((method) => (
@@ -1090,7 +1147,7 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
                 )}
                 <button
                   type="button"
-                  onClick={() => deleteMethod(method.id)}
+                  onClick={() => setDeleteTarget(method)}
                   className="rounded-xl bg-red-100 p-2 text-red-600 transition hover:bg-red-200"
                   title="Eliminar"
                 >
@@ -1101,6 +1158,17 @@ function PaymentSettings({ methods, addMethod, editMethod, deleteMethod }) {
           ))}
         </ul>
       )}
+
+      <ConfirmModal
+        show={!!deleteTarget}
+        title="Eliminar método de pago"
+        message={`¿Seguro que deseas eliminar "${deleteTarget?.name}"? Las transacciones antiguas conservarán ese método.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="warning"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

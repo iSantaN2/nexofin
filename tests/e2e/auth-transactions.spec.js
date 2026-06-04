@@ -108,5 +108,6 @@ test("login + crear + eliminar meta con categoría temporal", async ({ page }) =
   const categoryRow = page.getByTestId("category-row").filter({ hasText: categoryName });
   await expect(categoryRow).toBeVisible();
   await categoryRow.getByTitle("Eliminar").click();
+  await page.getByRole("button", { name: "Eliminar" }).click();
   await expect(categoryRow).toHaveCount(0);
 });
