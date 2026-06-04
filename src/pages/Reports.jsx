@@ -585,7 +585,7 @@ export default function Reports() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <SectionPanel title="Comparacion vs periodo anterior" className="space-y-2">
+            <SectionPanel title="Comparación vs periodo anterior" className="space-y-2">
               {previousTransactions.length === 0 ? (
                 <p className="text-sm text-gray-500">No hay base para comparar en el periodo anterior.</p>
               ) : (

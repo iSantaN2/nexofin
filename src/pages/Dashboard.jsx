@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, Lightbulb, Target, TrendingUp } from "lucide-react";
 import CategoryIcon from "../components/CategoryIcon";
 import EmptyState from "../components/ui/EmptyState";
+import LoadingState from "../components/ui/LoadingState";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
 import {
@@ -412,7 +413,7 @@ export default function Dashboard() {
     createNotification({
       type: "unusual_expense",
       title: `Gasto inusual: ${mainUnusualExpense.category}`,
-      message: `Esta categoría subio ${formatCurrency(mainUnusualExpense.increaseAmount)} frente al mes anterior.`,
+      message: `Esta categoría subió ${formatCurrency(mainUnusualExpense.increaseAmount)} frente al mes anterior.`,
       recommendation: `Revisa las transacciones de ${mainUnusualExpense.category} y confirma si fue un gasto puntual o un nuevo patrón.`,
       actionPath: `/transactions?category=${encodeURIComponent(mainUnusualExpense.category)}`,
       severity: "warning",
@@ -443,8 +444,11 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col gap-6 pb-20 relative">
       {loading && (
-        <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-2xl z-50">
-          <div className="animate-spin w-10 h-10 border-4 border-[#1f67ff] border-t-transparent rounded-full"></div>
+        <div className="absolute inset-0 z-50 flex items-start justify-center rounded-2xl bg-white/70 px-4 pt-20 backdrop-blur-sm">
+          <LoadingState
+            title="Guardando movimiento"
+            description="Estamos actualizando tu balance, metas y alertas."
+          />
         </div>
       )}
 
@@ -521,7 +525,7 @@ export default function Dashboard() {
               <p className="text-xs text-gray-500">{comparisonPercentText}</p>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Aún no hay base de comparacion.</p>
+            <p className="text-sm text-gray-500">Aún no hay base de comparación.</p>
           )}
         </SectionPanel>
       </div>
@@ -594,7 +598,7 @@ export default function Dashboard() {
                   {mainUnusualExpense.category}
                 </p>
                 <p className="text-sm text-slate-600">
-                  Subio {formatCurrency(mainUnusualExpense.increaseAmount)}
+                  Subió {formatCurrency(mainUnusualExpense.increaseAmount)}
                   {mainUnusualExpense.increasePercent !== null
                     ? ` (${mainUnusualExpense.increasePercent.toFixed(1)}%)`
                     : " respecto al mes anterior"}
@@ -634,7 +638,7 @@ export default function Dashboard() {
       </SectionPanel>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white shadow rounded-2xl p-6 h-full flex flex-col">
+        <SectionPanel className="h-full flex flex-col">
           <div className="flex items-center justify-between gap-3 mb-4 min-h-9">
             <h3 className="font-semibold">Metas del mes</h3>
             <Link
@@ -690,9 +694,9 @@ export default function Dashboard() {
               })}
             </div>
           )}
-        </div>
+        </SectionPanel>
 
-        <div className="bg-white shadow rounded-2xl p-6 h-full flex flex-col">
+        <SectionPanel className="h-full flex flex-col">
           <div className="flex items-center justify-between gap-3 mb-4 min-h-9">
             <h3 className="font-semibold">Distribución por categoría</h3>
             <span className="inline-flex px-3 py-1.5 text-sm opacity-0 select-none" aria-hidden>
@@ -770,7 +774,7 @@ export default function Dashboard() {
             )}
             </AnimatePresence>
           </div>
-        </div>
+        </SectionPanel>
       </div>
       <div className="flex justify-center gap-3 mt-4">
         {["all", "income", "expense"].map((f) => (
@@ -796,7 +800,7 @@ export default function Dashboard() {
       </div>
 
 
-      <div className="bg-white shadow rounded-2xl p-6">
+      <SectionPanel>
         <h3 className="font-semibold mb-4">Transacciones recientes</h3>
         {currentTransactions.length === 0 ? (
           <p className="text-gray-400 text-center py-10">No hay transacciones.</p>
@@ -851,7 +855,7 @@ export default function Dashboard() {
             ))}
           </div>
         )}
-      </div>
+      </SectionPanel>
 
       <button
         onClick={() => setIsAddModalOpen(true)}

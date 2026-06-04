@@ -25,7 +25,10 @@ export default function MetricCard({ title, value, helper = "", color = "blue", 
   const style = colorMap[color] || colorMap.blue;
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-4 shadow-sm ${style.card}`}>
+    <div
+      className={`group relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(10,43,110,0.12)] ${style.card}`}
+    >
+      <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-white/55 blur-2xl transition-transform duration-500 group-hover:scale-125" />
       <div className={`absolute inset-y-0 left-0 w-1 ${style.accent}`} />
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -33,7 +36,7 @@ export default function MetricCard({ title, value, helper = "", color = "blue", 
           <p className="mt-1 text-2xl font-bold leading-tight">{value}</p>
         </div>
         {icon ? (
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/75 shadow-sm">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/75 shadow-sm transition-transform duration-300 group-hover:scale-105">
             {icon}
           </span>
         ) : null}

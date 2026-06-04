@@ -14,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import ProtectedRoute from "./components/ProtectedRoute";
+import LoadingState from "./components/ui/LoadingState";
 import { useAuth } from "./context/AuthContext";
 import { AppContext } from "./context/AppContext";
 import toast from "react-hot-toast";
@@ -41,11 +42,7 @@ const navItems = [
 ];
 
 function RouteLoader() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fbff]">
-      <div className="w-12 h-12 border-4 border-[#1f67ff] border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+  return <LoadingState fullScreen title="Abriendo NexoFin" description="Estamos preparando la vista." />;
 }
 
 function AppShell() {

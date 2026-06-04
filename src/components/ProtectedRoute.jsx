@@ -1,6 +1,7 @@
 ﻿import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import LoadingState from "./ui/LoadingState";
 
 export default function ProtectedRoute({ children }) {
   const { user, userProfile, loadingAuth, loadingProfile } = useAuth();
@@ -8,9 +9,11 @@ export default function ProtectedRoute({ children }) {
 
   if (loadingAuth || loadingProfile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fbff]">
-        <div className="w-12 h-12 border-4 border-[#1f67ff] border-t-transparent rounded-full animate-spin"></div>
-      </div>
+      <LoadingState
+        fullScreen
+        title="Validando tu sesión"
+        description="Estamos preparando tu espacio financiero."
+      />
     );
   }
 
