@@ -15,10 +15,8 @@ import {
   filterTransactions,
   isIncomeTransaction,
   sortTransactions,
-  toTransactionDate,
 } from "../utils/transactions";
-
-const APP_TIME_ZONE = "America/Lima";
+import { formatCurrency, formatDate, formatSignedCurrency, formatTime } from "../utils/formatters";
 const ITEMS_PER_PAGE = 10;
 
 const SORT_OPTIONS = [
@@ -27,27 +25,6 @@ const SORT_OPTIONS = [
   { value: "amount_desc", label: "Mayor monto" },
   { value: "amount_asc", label: "Menor monto" },
 ];
-
-function formatDatePE(value) {
-  const date = toTransactionDate(value);
-  if (!date || Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("es-PE", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: APP_TIME_ZONE,
-  });
-}
-
-function formatTimePE(value) {
-  const date = toTransactionDate(value);
-  if (!date || Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString("es-PE", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: APP_TIME_ZONE,
-  });
-}
 
 export default function Transactions() {
   const { transactions, deleteTransaction, updateTransaction } = useTransactions();
@@ -364,8 +341,8 @@ export default function Transactions() {
 
       <SectionPanel className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <p className="text-green-600 font-semibold">Ingresos: S/ {totals.ingresos.toFixed(2)}</p>
-          <p className="text-red-600 font-semibold">Gastos: S/ {totals.gastos.toFixed(2)}</p>
+          <p className="text-green-600 font-semibold">Ingresos: {formatCurrency(totals.ingresos)}</p>
+          <p className="text-red-600 font-semibold">Gastos: {formatCurrency(totals.gastos)}</p>
           <p className="text-xs text-gray-500 mt-1">Movimientos: {filteredTransactions.length}</p>
         </div>
         <h2
@@ -373,7 +350,7 @@ export default function Transactions() {
             totals.balance >= 0 ? "text-green-600" : "text-red-600"
           }`}
         >
-          Balance: S/ {totals.balance.toFixed(2)}
+          Balance: {formatCurrency(totals.balance)}
         </h2>
       </SectionPanel>
 
@@ -410,16 +387,16 @@ export default function Transactions() {
                         <p className="font-semibold text-gray-800">
                           {transaction.category || "Sin categoria"}
                         </p>
-                        <p className="text-xs text-gray-500">{formatDatePE(transaction.date)}</p>
+                        <p className="text-xs text-gray-500">{formatDate(transaction.date)}</p>
                         <p className="text-xs text-gray-400">
-                          {formatTimePE(transaction.createdAt || transaction.date)} · {transaction.account}
+                          {formatTime(transaction.createdAt || transaction.date)} · {transaction.account}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
                       <p className={`font-bold ${income ? "text-green-600" : "text-red-600"}`}>
-                        {income ? "+ S/" : "- S/"} {Number(transaction.amount).toFixed(2)}
+                        {formatSignedCurrency(transaction.amount, { income })}
                       </p>
 
                       <div className="flex gap-2">
@@ -493,7 +470,7 @@ export default function Transactions() {
       <ConfirmModal
         show={showConfirm}
         title="Eliminar transaccion"
-        message={`¿Seguro que deseas eliminar "${confirmTarget?.category}" por S/ ${confirmTarget?.amount}?`}
+        message={`¿Seguro que deseas eliminar "${confirmTarget?.category}" por ${formatCurrency(confirmTarget?.amount)}?`}
         confirmText="Eliminar"
         onConfirm={confirmDelete}
         onCancel={() => {

@@ -1,11 +1,11 @@
+import { toDate } from "./formatters";
+
 export function isIncomeTransaction(type) {
   return type === "Ingreso" || type === "income";
 }
 
 export function toTransactionDate(value) {
-  if (!value) return null;
-  if (value?.seconds) return new Date(value.seconds * 1000);
-  return new Date(value);
+  return toDate(value);
 }
 
 export function normalizeSearchText(text = "") {

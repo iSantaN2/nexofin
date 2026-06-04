@@ -16,6 +16,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
+import { formatDateTime } from "../utils/formatters";
 
 const FILTERS = [
   { key: "all", label: "Todas" },
@@ -128,18 +129,6 @@ const getFallbackRecommendation = (notification) => {
     default:
       return "Revisa esta alerta y decide si requiere una accion.";
   }
-};
-
-const formatNotificationDate = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  return new Intl.DateTimeFormat("es-PE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/Lima",
-  }).format(date);
 };
 
 function NotificationIcon({ severity, resolved }) {
@@ -372,7 +361,7 @@ export default function Notifications() {
                               <p className="mt-1">{recommendation}</p>
                             </div>
                             <p className="mt-2 text-xs text-slate-500">
-                              {formatNotificationDate(item.createdAt)}
+                              {formatDateTime(item.createdAt)}
                               {item.monthKey ? ` - ${item.monthKey}` : ""}
                             </p>
                           </div>

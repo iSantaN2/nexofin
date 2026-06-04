@@ -11,38 +11,7 @@ import MetricCard from "../components/ui/MetricCard";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
 import { buildBudgetAlertNotification } from "../utils/budgetNotifications";
-
-const APP_TIME_ZONE = "America/Lima";
-const MONTH_KEY_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: APP_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-});
-
-const getCurrentMonthKey = () => {
-  const parts = MONTH_KEY_FORMATTER.formatToParts(new Date());
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  if (!year || !month) return "";
-  return `${year}-${month}`;
-};
-
-const toDate = (value) => {
-  if (!value) return null;
-  if (value?.seconds) return new Date(value.seconds * 1000);
-  return new Date(value);
-};
-
-const getYearMonthKey = (value) => {
-  const date = toDate(value);
-  if (!date || Number.isNaN(date.getTime())) return null;
-
-  const parts = MONTH_KEY_FORMATTER.formatToParts(date);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  if (!year || !month) return null;
-  return `${year}-${month}`;
-};
+import { formatCurrency, getCurrentMonthKey, getMonthKey } from "../utils/formatters";
 
 const getMonthDays = (monthKey) => {
   const [year, month] = (monthKey || "").split("-").map(Number);
@@ -100,22 +69,20 @@ const getStatus = (progress) => {
   };
 };
 
-const formatMoney = (value) => `S/ ${(Number(value) || 0).toFixed(2)}`;
-
 const getBudgetRecommendation = (item) => {
   if (item.progress >= 100) {
-    return `Ya superaste esta meta por ${formatMoney(Math.abs(item.remaining))}. Revisa los ultimos gastos o ajusta el limite si fue un gasto excepcional.`;
+    return `Ya superaste esta meta por ${formatCurrency(Math.abs(item.remaining))}. Revisa los ultimos gastos o ajusta el limite si fue un gasto excepcional.`;
   }
 
   if (item.progress >= 80) {
-    return `Quedan ${formatMoney(Math.max(0, item.remaining))}. Mantén los gastos de esta categoria por debajo de ese monto para cerrar bien el mes.`;
+    return `Quedan ${formatCurrency(Math.max(0, item.remaining))}. Mantén los gastos de esta categoria por debajo de ese monto para cerrar bien el mes.`;
   }
 
   if (item.projectedExceeded) {
     return `Aunque hoy luce saludable, al ritmo actual podria superar la meta cerca del dia ${item.estimatedExceedDay}.`;
   }
 
-  return `Vas dentro del limite. Puedes usar hasta ${formatMoney(Math.max(0, item.remaining))} sin superar la meta.`;
+  return `Vas dentro del limite. Puedes usar hasta ${formatCurrency(Math.max(0, item.remaining))} sin superar la meta.`;
 };
 
 function BudgetCard({ item, onDelete }) {
@@ -133,8 +100,8 @@ function BudgetCard({ item, onDelete }) {
             {item.category}
           </p>
           <p className="mt-1 text-sm text-gray-600">
-            Gastado: <span className="font-medium">{formatMoney(item.spent)}</span> de
-            <span className="font-medium"> {formatMoney(item.limit)}</span>
+            Gastado: <span className="font-medium">{formatCurrency(item.spent)}</span> de
+            <span className="font-medium"> {formatCurrency(item.limit)}</span>
           </p>
           <p className={`text-xs font-semibold mt-1 ${item.status.color}`}>
             {item.status.label} - {item.progress.toFixed(1)}%
@@ -142,7 +109,7 @@ function BudgetCard({ item, onDelete }) {
           <p className="mt-2 text-sm text-slate-600">{item.recommendation}</p>
           {item.projectedSpend > 0 ? (
             <p className="mt-1 text-xs text-slate-500">
-              Proyeccion de cierre: {formatMoney(item.projectedSpend)}
+              Proyeccion de cierre: {formatCurrency(item.projectedSpend)}
             </p>
           ) : null}
         </div>
@@ -224,7 +191,7 @@ export default function Budgets() {
   );
 
   const monthTransactions = useMemo(
-    () => transactions.filter((tx) => getYearMonthKey(tx.date) === selectedMonth),
+    () => transactions.filter((tx) => getMonthKey(tx.date) === selectedMonth),
     [transactions, selectedMonth]
   );
 
@@ -393,7 +360,7 @@ export default function Budgets() {
           title: `Proyeccion de meta: ${item.category}`,
           message: item.estimatedExceedDay
             ? `Con tu ritmo actual podrias superar la meta cerca del dia ${item.estimatedExceedDay}.`
-            : `Con tu ritmo actual podrias cerrar en ${formatMoney(item.projectedSpend)}.`,
+            : `Con tu ritmo actual podrias cerrar en ${formatCurrency(item.projectedSpend)}.`,
           recommendation: `Reduce el ritmo de gasto en ${item.category} o ajusta la meta si este mes tiene gastos excepcionales.`,
           actionPath: `/transactions?category=${encodeURIComponent(item.category)}`,
           severity: "warning",
@@ -477,13 +444,13 @@ export default function Budgets() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           title="Presupuesto general"
-          value={`${formatMoney(budgetSummary.totalSpent)} / ${formatMoney(budgetSummary.totalLimit)}`}
+          value={`${formatCurrency(budgetSummary.totalSpent)} / ${formatCurrency(budgetSummary.totalLimit)}`}
           helper={`${budgetSummary.progress.toFixed(1)}% usado`}
           color={budgetSummary.progress >= 100 ? "red" : budgetSummary.progress >= 80 ? "amber" : "blue"}
         />
         <MetricCard
           title="Meta de ahorro"
-          value={formatMoney(budgetSummary.savings)}
+          value={formatCurrency(budgetSummary.savings)}
           helper={
             budgetSummary.savingsRate === null
               ? "Sin ingresos registrados"
@@ -493,7 +460,7 @@ export default function Budgets() {
         />
         <MetricCard
           title="Proyeccion mensual"
-          value={formatMoney(budgetSummary.projectedTotal)}
+          value={formatCurrency(budgetSummary.projectedTotal)}
           helper="Gasto proyectado segun ritmo actual"
           color={budgetSummary.projectedTotal > budgetSummary.totalLimit ? "amber" : "slate"}
         />
@@ -555,8 +522,8 @@ export default function Budgets() {
             <p className="mt-2 text-sm text-slate-600">
               Has usado {budgetSummary.progress.toFixed(1)}% del presupuesto configurado.
               {budgetSummary.remaining >= 0
-                ? ` Restan ${formatMoney(budgetSummary.remaining)}.`
-                : ` Hay exceso de ${formatMoney(Math.abs(budgetSummary.remaining))}.`}
+                ? ` Restan ${formatCurrency(budgetSummary.remaining)}.`
+                : ` Hay exceso de ${formatCurrency(Math.abs(budgetSummary.remaining))}.`}
             </p>
           </div>
 
@@ -567,8 +534,8 @@ export default function Budgets() {
             </div>
             <p className="mt-2 text-sm text-slate-600">
               {budgetSummary.savings >= 0
-                ? `Tu balance mensual disponible es ${formatMoney(budgetSummary.savings)}.`
-                : `Tus gastos superan tus ingresos por ${formatMoney(Math.abs(budgetSummary.savings))}.`}
+                ? `Tu balance mensual disponible es ${formatCurrency(budgetSummary.savings)}.`
+                : `Tus gastos superan tus ingresos por ${formatCurrency(Math.abs(budgetSummary.savings))}.`}
             </p>
           </div>
 

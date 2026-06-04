@@ -11,18 +11,13 @@ import EmptyState from "../components/ui/EmptyState";
 import MetricCard from "../components/ui/MetricCard";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
+import { formatCurrency, formatSignedCurrency, formatTime, toDate } from "../utils/formatters";
 
 const FILTER_OPTIONS = [
   { key: "all", label: "Todas" },
   { key: "income", label: "Ingresos" },
   { key: "expense", label: "Gastos" },
 ];
-
-function toDate(value) {
-  if (!value) return null;
-  if (value?.seconds) return new Date(value.seconds * 1000);
-  return new Date(value);
-}
 
 function normalizeCategory(category = "") {
   return String(category)
@@ -187,11 +182,11 @@ export default function CalendarPage() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard title="Ingresos del dia" value={`S/ ${daySummary.ingresos.toFixed(2)}`} color="green" />
-        <MetricCard title="Gastos del dia" value={`S/ ${daySummary.gastos.toFixed(2)}`} color="red" />
+        <MetricCard title="Ingresos del dia" value={formatCurrency(daySummary.ingresos)} color="green" />
+        <MetricCard title="Gastos del dia" value={formatCurrency(daySummary.gastos)} color="red" />
         <MetricCard
           title="Balance del dia"
-          value={`S/ ${daySummary.balance.toFixed(2)}`}
+          value={formatCurrency(daySummary.balance)}
           color={daySummary.balance >= 0 ? "green" : "red"}
         />
         <MetricCard title="Movimientos" value={daySummary.count} color="slate" />
@@ -308,11 +303,13 @@ export default function CalendarPage() {
                     <div
                       className="w-full bg-red-400 rounded-md"
                       style={{ height: `${Math.max(row.percent, row.amount > 0 ? 8 : 0)}%` }}
-                      title={`S/ ${row.amount.toFixed(2)}`}
+                      title={formatCurrency(row.amount)}
                     />
                   </div>
                   <span className="text-[10px] text-gray-500 uppercase">{row.dayLabel}</span>
-                  <span className="text-[10px] text-gray-600">S/ {row.amount.toFixed(0)}</span>
+                  <span className="text-[10px] text-gray-600">
+                    {formatCurrency(row.amount, { withSymbol: false })}
+                  </span>
                 </div>
               ))}
             </div>
@@ -338,7 +335,7 @@ export default function CalendarPage() {
                   <div>
                     <p className="font-medium text-gray-800">{item.category}</p>
                     <p className="text-xs text-gray-500">
-                      {dayjs(item.parsedDate).format("HH:mm")} Â· {item.account || "Sin metodo"}
+                      {formatTime(item.parsedDate)} · {item.account || "Sin metodo"}
                     </p>
                     {item.notes ? <p className="text-xs text-gray-500">{item.notes}</p> : null}
                   </div>
@@ -348,8 +345,7 @@ export default function CalendarPage() {
                     item.type === "Ingreso" ? "text-green-500" : "text-red-500"
                   }`}
                 >
-                  {item.type === "Ingreso" ? "+S/ " : "-S/ "}
-                  {item.amount.toFixed(2)}
+                  {formatSignedCurrency(item.amount, { income: item.type === "Ingreso", compact: true })}
                 </span>
               </li>
             ))}
@@ -372,3 +368,4 @@ export default function CalendarPage() {
     </div>
   );
 }
+

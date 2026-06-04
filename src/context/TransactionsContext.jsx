@@ -21,23 +21,9 @@ import {
   normalizeType,
 } from "../utils/validation";
 import { buildBudgetAlertNotification } from "../utils/budgetNotifications";
+import { formatCurrency, getMonthKey } from "../utils/formatters";
 
 export const TransactionsContext = createContext();
-
-const MONTH_KEY_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Lima",
-  year: "numeric",
-  month: "2-digit",
-});
-
-function getMonthKey(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const parts = MONTH_KEY_FORMATTER.formatToParts(date);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  return year && month ? `${year}-${month}` : "";
-}
 
 function isIncomeTransaction(transaction) {
   return transaction?.type === "Ingreso" || transaction?.type === "income";
@@ -155,7 +141,7 @@ export function TransactionsProvider({ children }) {
         await createNotification({
           type: "unusual_expense",
           title: `Gasto inusual: ${cleanData.category}`,
-          message: `Este gasto fue S/ ${unusualSignal.increaseAmount.toFixed(2)} mayor que tu promedio en esta categoria.`,
+          message: `Este gasto fue ${formatCurrency(unusualSignal.increaseAmount)} mayor que tu promedio en esta categoria.`,
           recommendation: `Revisa si este gasto de ${cleanData.category} fue puntual. Si se repetira, considera ajustar tu meta o recortar otros gastos del mes.`,
           actionPath: `/transactions?category=${encodeURIComponent(cleanData.category)}`,
           severity: "warning",

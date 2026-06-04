@@ -27,111 +27,25 @@ import {
   isIncomeTransaction,
 } from "../utils/finance";
 import { buildBudgetAlertNotification, getBudgetAlertMilestone } from "../utils/budgetNotifications";
-
-const APP_TIME_ZONE = "America/Lima";
-const YEAR_MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: APP_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-});
-const DAY_KEY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
-  timeZone: APP_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-const toDate = (value) => {
-  if (!value) return null;
-  if (value?.seconds) return new Date(value.seconds * 1000);
-  return new Date(value);
-};
-
-const formatDatePE = (value) => {
-  const d = toDate(value);
-  if (!d || Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es-PE", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: APP_TIME_ZONE,
-  });
-};
-
-const formatTimePE = (value) => {
-  const d = toDate(value);
-  if (!d || Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("es-PE", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: APP_TIME_ZONE,
-  });
-};
-
-const getYearMonthKey = (value) => {
-  const d = toDate(value);
-  if (!d || Number.isNaN(d.getTime())) return null;
-  const parts = YEAR_MONTH_FORMATTER.formatToParts(d);
-  const year = parts.find((p) => p.type === "year")?.value;
-  const month = parts.find((p) => p.type === "month")?.value;
-  if (!year || !month) return null;
-  return `${year}-${month}`;
-};
-
-const getDayKey = (value) => {
-  const d = toDate(value);
-  if (!d || Number.isNaN(d.getTime())) return null;
-  return DAY_KEY_FORMATTER.format(d);
-};
-
-const getPreviousMonthKey = (yearMonth) => {
-  if (!yearMonth) return null;
-  const [year, month] = yearMonth.split("-").map(Number);
-  if (!year || !month) return null;
-  const previous = new Date(year, month - 2, 1);
-  const previousYear = previous.getFullYear();
-  const previousMonth = String(previous.getMonth() + 1).padStart(2, "0");
-  return `${previousYear}-${previousMonth}`;
-};
-
-const formatMonthLabel = (yearMonth) => {
-  if (!yearMonth) return "";
-  const [year, month] = yearMonth.split("-").map(Number);
-  if (!year || !month) return "";
-  const monthDate = new Date(year, month - 1, 1);
-  const label = monthDate.toLocaleDateString("es-PE", {
-    month: "long",
-    year: "numeric",
-    timeZone: APP_TIME_ZONE,
-  });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-};
-
-const getMonthProjectionDates = (yearMonth) => {
-  const [year, month] = (yearMonth || "").split("-").map(Number);
-  if (!year || !month) {
-    const now = new Date();
-    return {
-      currentDay: now.getDate(),
-      daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
-    };
-  }
-
-  const now = new Date();
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
-
-  return {
-    currentDay: isCurrentMonth ? now.getDate() : daysInMonth,
-    daysInMonth,
-  };
-};
+import {
+  formatCurrency,
+  formatDate,
+  formatMonthLabel,
+  formatSignedCurrency,
+  formatTime,
+  getCurrentMonthKey,
+  getDayKey,
+  getMonthKey,
+  getMonthProgress,
+  getPreviousMonthKey,
+  toDate,
+} from "../utils/formatters";
 
 export default function Dashboard() {
   const { transactions, addTransaction } = useContext(TransactionsContext);
   const { budgets, notificationSettings, createNotification } = useContext(AppContext);
   const { user } = useAuth();
-  const currentMonthKey = getYearMonthKey(new Date());
+  const currentMonthKey = getCurrentMonthKey();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
   const [filter, setFilter] = useState("all");
@@ -156,7 +70,7 @@ export default function Dashboard() {
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions.filter(
-      (t) => getYearMonthKey(t.date) === selectedMonth
+      (t) => getMonthKey(t.date) === selectedMonth
     );
 
     filtered = filtered.filter((t) => matchesTypeFilter(t, filter));
@@ -169,7 +83,7 @@ export default function Dashboard() {
   }, [transactions, filter, selectedMonth]);
 
   const selectedMonthTransactions = useMemo(
-    () => transactions.filter((t) => getYearMonthKey(t.date) === selectedMonth),
+    () => transactions.filter((t) => getMonthKey(t.date) === selectedMonth),
     [transactions, selectedMonth]
   );
 
@@ -186,20 +100,20 @@ export default function Dashboard() {
   const previousMonthTransactions = useMemo(() => {
     if (!previousMonthKey) return [];
     return transactions
-      .filter((t) => getYearMonthKey(t.date) === previousMonthKey)
+      .filter((t) => getMonthKey(t.date) === previousMonthKey)
       .filter((t) => matchesTypeFilter(t, filter));
   }, [transactions, previousMonthKey, filter]);
 
   const previousMonthAllTransactions = useMemo(() => {
     if (!previousMonthKey) return [];
-    return transactions.filter((t) => getYearMonthKey(t.date) === previousMonthKey);
+    return transactions.filter((t) => getMonthKey(t.date) === previousMonthKey);
   }, [transactions, previousMonthKey]);
 
   const monthExpenseByCategory = useMemo(() => {
     const totals = {};
 
     transactions
-      .filter((t) => getYearMonthKey(t.date) === selectedMonth)
+      .filter((t) => getMonthKey(t.date) === selectedMonth)
       .filter((t) => !isIncomeTransaction(t))
       .forEach((t) => {
         const name =
@@ -263,7 +177,7 @@ export default function Dashboard() {
   );
 
   const monthProjectionDates = useMemo(
-    () => getMonthProjectionDates(selectedMonth),
+    () => getMonthProgress(selectedMonth),
     [selectedMonth]
   );
 
@@ -389,7 +303,7 @@ export default function Dashboard() {
     ? `No hay datos en ${previousMonthLabel || "el mes anterior"} para comparar.`
     : monthComparison.difference === 0
     ? `Este mes estas igual en ${comparisonMetricLabel} que en ${previousMonthLabel}.`
-    : `Este mes tienes S/ ${comparisonAbsoluteAmount.toFixed(2)} ${comparisonDirection} de ${comparisonMetricLabel} que en ${previousMonthLabel}.`;
+    : `Este mes tienes ${formatCurrency(comparisonAbsoluteAmount)} ${comparisonDirection} de ${comparisonMetricLabel} que en ${previousMonthLabel}.`;
 
   const comparisonPercentText =
     monthComparison.percentChange === null
@@ -431,7 +345,7 @@ export default function Dashboard() {
 
       if (notification.severity === "danger") {
         toast.error(
-          `Meta excedida en ${item.category}: gastaste S/ ${item.spent.toFixed(2)} de S/ ${item.limit.toFixed(2)}`
+          `Meta excedida en ${item.category}: gastaste ${formatCurrency(item.spent)} de ${formatCurrency(item.limit)}`
         );
       } else {
         toast(`Alerta: ${item.category} ya va en ${item.progress.toFixed(1)}% de su meta mensual.`);
@@ -498,7 +412,7 @@ export default function Dashboard() {
     createNotification({
       type: "unusual_expense",
       title: `Gasto inusual: ${mainUnusualExpense.category}`,
-      message: `Esta categoria subio S/ ${mainUnusualExpense.increaseAmount.toFixed(2)} frente al mes anterior.`,
+      message: `Esta categoria subio ${formatCurrency(mainUnusualExpense.increaseAmount)} frente al mes anterior.`,
       recommendation: `Revisa las transacciones de ${mainUnusualExpense.category} y confirma si fue un gasto puntual o un nuevo patron.`,
       actionPath: `/transactions?category=${encodeURIComponent(mainUnusualExpense.category)}`,
       severity: "warning",
@@ -517,7 +431,7 @@ export default function Dashboard() {
       title: `Proyeccion de meta: ${criticalBudgetProjection.category}`,
       message: criticalBudgetProjection.estimatedExceedDay
         ? `Con tu ritmo actual podrias superar la meta cerca del dia ${criticalBudgetProjection.estimatedExceedDay}.`
-        : `Con tu ritmo actual podrias cerrar en S/ ${criticalBudgetProjection.projectedSpend.toFixed(2)}.`,
+        : `Con tu ritmo actual podrias cerrar en ${formatCurrency(criticalBudgetProjection.projectedSpend)}.`,
       recommendation: `Reduce el ritmo de gasto en ${criticalBudgetProjection.category} o ajusta la meta si este mes tiene gastos excepcionales.`,
       actionPath: `/transactions?category=${encodeURIComponent(criticalBudgetProjection.category)}`,
       severity: "warning",
@@ -576,7 +490,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SectionPanel className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 h-full">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">S/ {balance.toFixed(2)}</h2>
+            <h2 className="text-3xl font-bold text-gray-900">{formatCurrency(balance)}</h2>
             <p className="text-sm text-gray-500 mt-1">
               {filter === "all"
                 ? "Balance total del mes"
@@ -588,10 +502,10 @@ export default function Dashboard() {
           {filter === "all" && (
             <div className="text-left sm:text-right">
               <p className="text-green-500 font-semibold">
-                Ingresos: S/ {ingresos.toFixed(2)}
+                Ingresos: {formatCurrency(ingresos)}
               </p>
               <p className="text-red-500 font-semibold">
-                Gastos: S/ {gastos.toFixed(2)}
+                Gastos: {formatCurrency(gastos)}
               </p>
             </div>
           )}
@@ -602,7 +516,7 @@ export default function Dashboard() {
           {monthComparison.hasPreviousData ? (
             <div className="text-left sm:text-right">
               <p className={`font-semibold ${comparisonColor}`}>
-                {comparisonPrefix}S/ {monthComparison.difference.toFixed(2)}
+                {comparisonPrefix}{formatCurrency(monthComparison.difference)}
               </p>
               <p className="text-xs text-gray-500">{comparisonPercentText}</p>
             </div>
@@ -630,7 +544,7 @@ export default function Dashboard() {
             {topExpenseCategory ? (
               <>
                 <p className="mt-2 text-lg font-bold text-red-700">
-                  S/ {topExpenseCategory.amount.toFixed(2)}
+                  {formatCurrency(topExpenseCategory.amount)}
                 </p>
                 <p className="text-sm text-slate-600">{topExpenseCategory.category}</p>
               </>
@@ -680,7 +594,7 @@ export default function Dashboard() {
                   {mainUnusualExpense.category}
                 </p>
                 <p className="text-sm text-slate-600">
-                  Subio S/ {mainUnusualExpense.increaseAmount.toFixed(2)}
+                  Subio {formatCurrency(mainUnusualExpense.increaseAmount)}
                   {mainUnusualExpense.increasePercent !== null
                     ? ` (${mainUnusualExpense.increasePercent.toFixed(1)}%)`
                     : " respecto al mes anterior"}
@@ -704,7 +618,7 @@ export default function Dashboard() {
                   {criticalBudgetProjection.category}
                 </p>
                 <p className="text-sm text-slate-600">
-                  Podrias cerrar en S/ {criticalBudgetProjection.projectedSpend.toFixed(2)}
+                  Podrias cerrar en {formatCurrency(criticalBudgetProjection.projectedSpend)}
                   {criticalBudgetProjection.estimatedExceedDay
                     ? ` y superar la meta cerca del dia ${criticalBudgetProjection.estimatedExceedDay}.`
                     : "."}
@@ -752,8 +666,8 @@ export default function Dashboard() {
                       <div>
                         <p className="font-semibold text-gray-800">{item.category}</p>
                         <p className="text-sm text-gray-600">
-                          Gastado: <span className="font-medium">S/ {item.spent.toFixed(2)}</span> de
-                          <span className="font-medium"> S/ {item.limit.toFixed(2)}</span>
+                          Gastado: <span className="font-medium">{formatCurrency(item.spent)}</span> de
+                          <span className="font-medium"> {formatCurrency(item.limit)}</span>
                         </p>
                         <p className={`text-xs font-semibold mt-1 ${item.status.textColor}`}>
                           {item.status.label} - {item.progress.toFixed(1)}%
@@ -761,8 +675,8 @@ export default function Dashboard() {
                       </div>
                       <p className="text-xs text-gray-500 text-right">
                         {item.remaining >= 0
-                          ? `Restan S/ ${item.remaining.toFixed(2)}`
-                          : `Exceso S/ ${Math.abs(item.remaining).toFixed(2)}`}
+                          ? `Restan ${formatCurrency(item.remaining)}`
+                          : `Exceso ${formatCurrency(Math.abs(item.remaining))}`}
                       </p>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full mt-3 overflow-hidden">
@@ -824,7 +738,7 @@ export default function Dashboard() {
                       </Pie>
                       <Tooltip
                         formatter={(value, name) => [
-                          `S/ ${Number(value).toFixed(2)}`,
+                          formatCurrency(value),
                           name,
                         ]}
                       />
@@ -901,9 +815,9 @@ export default function Dashboard() {
                       <p className="font-semibold text-gray-800">
                         {t.category || "Sin categoria"}
                       </p>
-                      <p className="text-xs text-gray-500">{formatDatePE(t.date)}</p>
+                      <p className="text-xs text-gray-500">{formatDate(t.date)}</p>
                       <p className="text-xs text-gray-400">
-                        {formatTimePE(t.createdAt || t.date)} · {t.account}
+                        {formatTime(t.createdAt || t.date)} · {t.account}
                       </p>
                     </div>
                   </div>
@@ -912,7 +826,7 @@ export default function Dashboard() {
                       isIncome ? "text-green-600" : "text-red-600"
                     }`}
                   >
-                    {isIncome ? "+ S/" : "- S/"} {Number(t.amount).toFixed(2)}
+                    {formatSignedCurrency(t.amount, { income: isIncome })}
                   </p>
                 </li>
               );
