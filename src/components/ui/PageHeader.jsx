@@ -1,11 +1,14 @@
 export default function PageHeader({ title, description, action = null }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="nexo-surface rounded-3xl border border-[#dbe8ff] px-5 py-4 shadow-sm sm:px-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold text-[#0a2b6e]">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+          <span className="nexo-chip mb-2">NexoFin Pro</span>
+          <h1 className="text-2xl font-bold tracking-tight text-[#061a3d] sm:text-3xl">{title}</h1>
+          {description ? <p className="mt-1 max-w-3xl text-sm text-slate-500">{description}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      {action}
     </div>
   );
 }
