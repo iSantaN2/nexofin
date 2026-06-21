@@ -21,7 +21,6 @@ import {
   getDoc,
   getDocs,
   query,
-  serverTimestamp,
   setDoc,
   where,
   writeBatch,
@@ -45,6 +44,10 @@ const USER_OWNED_COLLECTIONS = [
   "notifications",
 ];
 const ACCOUNT_DELETE_STEP_TIMEOUT_MS = 90000;
+
+function nowIso() {
+  return new Date().toISOString();
+}
 
 function withTimeout(promise, timeoutMs, timeoutCode, timeoutMessage) {
   let timeoutId = null;
@@ -211,8 +214,8 @@ function buildDefaultProfile(currentUser, overrides = {}) {
     address: overrides.address ?? "",
     currency: overrides.currency ?? DEFAULT_CURRENCY,
     onboardingCompleted: overrides.onboardingCompleted ?? false,
-    createdAt: overrides.createdAt ?? serverTimestamp(),
-    updatedAt: overrides.updatedAt ?? serverTimestamp(),
+    createdAt: overrides.createdAt ?? nowIso(),
+    updatedAt: overrides.updatedAt ?? nowIso(),
   };
 }
 
@@ -270,7 +273,7 @@ export function AuthProvider({ children }) {
           lastName: profile.lastName ?? "",
           phone: profile.phone ?? "",
           address: profile.address ?? "",
-          updatedAt: serverTimestamp(),
+          updatedAt: nowIso(),
         },
         { merge: true }
       );
@@ -468,7 +471,7 @@ export function AuthProvider({ children }) {
         lastName: lastName.trim(),
         phone: phone.trim(),
         address: address.trim(),
-        updatedAt: serverTimestamp(),
+        updatedAt: nowIso(),
       },
       { merge: true }
     );
@@ -562,7 +565,7 @@ export function AuthProvider({ children }) {
         photoURL: currentUser.photoURL || "",
         currency: safeCurrency,
         onboardingCompleted: true,
-        updatedAt: serverTimestamp(),
+        updatedAt: nowIso(),
       },
       { merge: true }
     );
