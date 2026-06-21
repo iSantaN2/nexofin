@@ -5,89 +5,63 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
+  limit as limitQuery,
   onSnapshot,
+  orderBy,
   query,
   setDoc,
+  startAfter,
   updateDoc,
   where,
 } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
-import { isValidMonthKey, normalizePositiveAmount, normalizeText } from "../utils/validation";
+import { isAccountDeletionInProgress } from "../utils/accountDeletion";
+import { deleteBudgetDoc, upsertBudgetDoc } from "../services/budgetService";
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  NOTIFICATIONS_PAGE_SIZE,
+  buildNotificationDocId,
+  isFirestoreIndexError,
+  mapNotificationDoc,
+  mergeNotificationsById,
+  normalizeNotificationSeverity,
+  normalizeNotificationStatus,
+  normalizeNotificationText,
+  sanitizeNotificationPatch,
+  sanitizeNotificationSettings,
+  sortNotificationsByCreatedAt,
+} from "../services/notificationService";
+import { logError } from "../services/logger";
 
 export const AppContext = createContext();
 
-const DEFAULT_NOTIFICATION_SETTINGS = Object.freeze({
-  budget80Enabled: true,
-  budget100Enabled: true,
-  dailyReminderEnabled: false,
-});
-
-const sanitizeNotificationSettings = (rawValue) => {
-  if (!rawValue || typeof rawValue !== "object") {
-    return { ...DEFAULT_NOTIFICATION_SETTINGS };
-  }
+const getNotificationsFallbackPage = (items, cursor = null, pageSize = NOTIFICATIONS_PAGE_SIZE) => {
+  const currentOffset =
+    typeof cursor === "object" && cursor !== null && "offset" in cursor ? cursor.offset : 0;
+  const pageItems = items.slice(currentOffset, currentOffset + pageSize);
+  const nextOffset = currentOffset + pageItems.length;
 
   return {
-    budget80Enabled:
-      typeof rawValue.budget80Enabled === "boolean"
-        ? rawValue.budget80Enabled
-        : DEFAULT_NOTIFICATION_SETTINGS.budget80Enabled,
-    budget100Enabled:
-      typeof rawValue.budget100Enabled === "boolean"
-        ? rawValue.budget100Enabled
-        : DEFAULT_NOTIFICATION_SETTINGS.budget100Enabled,
-    dailyReminderEnabled:
-      typeof rawValue.dailyReminderEnabled === "boolean"
-        ? rawValue.dailyReminderEnabled
-        : DEFAULT_NOTIFICATION_SETTINGS.dailyReminderEnabled,
+    items: pageItems,
+    cursor: nextOffset < items.length ? { offset: nextOffset } : null,
+    hasMore: nextOffset < items.length,
   };
-};
-
-const sanitizeNotificationPatch = (rawValue) => {
-  if (!rawValue || typeof rawValue !== "object") return {};
-  const patch = {};
-
-  if (typeof rawValue.budget80Enabled === "boolean") {
-    patch.budget80Enabled = rawValue.budget80Enabled;
-  }
-  if (typeof rawValue.budget100Enabled === "boolean") {
-    patch.budget100Enabled = rawValue.budget100Enabled;
-  }
-  if (typeof rawValue.dailyReminderEnabled === "boolean") {
-    patch.dailyReminderEnabled = rawValue.dailyReminderEnabled;
-  }
-
-  return patch;
-};
-
-const normalizeNotificationSeverity = (value) => {
-  return ["info", "success", "warning", "danger"].includes(value) ? value : "info";
-};
-
-const normalizeNotificationStatus = (value) => {
-  return ["new", "read", "resolved"].includes(value) ? value : "new";
-};
-
-const normalizeNotificationText = (value, maxLength, fallback = "") => {
-  const cleanValue = typeof value === "string" ? value.trim() : "";
-  if (!cleanValue) return fallback;
-  return cleanValue.slice(0, maxLength);
-};
-
-const buildNotificationDocId = (uid, sourceKey) => {
-  const rawId = `${uid}_${sourceKey}`;
-  return rawId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 180);
 };
 
 export const AppProvider = ({ children }) => {
   const { user } = useAuth();
   const [budgets, setBudgets] = useState([]);
+  const [budgetsError, setBudgetsError] = useState("");
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const notificationsRef = useRef([]);
+  const notificationCursorRef = useRef(null);
+  const notificationHistoryRef = useRef([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
-  const [loadingMoreNotifications] = useState(false);
-  const [hasMoreNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     ...DEFAULT_NOTIFICATION_SETTINGS,
   });
@@ -121,6 +95,11 @@ export const AppProvider = ({ children }) => {
     const unsubscribe = onSnapshot(
       settingsRef,
       async (snapshot) => {
+        if (isAccountDeletionInProgress(user.uid)) {
+          setNotificationSettings({ ...DEFAULT_NOTIFICATION_SETTINGS });
+          return;
+        }
+
         if (snapshot.exists()) {
           const nextSettings = sanitizeNotificationSettings(snapshot.data());
           setNotificationSettings(nextSettings);
@@ -136,11 +115,15 @@ export const AppProvider = ({ children }) => {
             updatedAt: new Date().toISOString(),
           });
         } catch (error) {
-          console.error("Error al crear preferencias de notificaciones:", error);
+          logError("Error al crear preferencias de notificaciones", error, {
+            source: "notifications.settings-create",
+          });
         }
       },
       (error) => {
-        console.error("Error al cargar preferencias de notificaciones:", error);
+        logError("Error al cargar preferencias de notificaciones", error, {
+          source: "notifications.settings-load",
+        });
       }
     );
 
@@ -150,32 +133,86 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (!user?.uid) {
       setNotifications([]);
+      setNotificationsError("");
+      notificationCursorRef.current = null;
+      notificationHistoryRef.current = [];
+      setHasMoreNotifications(false);
       setNotificationsLoading(false);
       return undefined;
     }
 
     setNotificationsLoading(true);
-    const q = query(collection(db, "notifications"), where("uid", "==", user.uid));
+    setNotificationsError("");
+    notificationCursorRef.current = null;
+    notificationHistoryRef.current = [];
+    setHasMoreNotifications(false);
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs
-          .map((docItem) => ({
-            id: docItem.id,
-            ...docItem.data(),
-          }))
-          .sort((a, b) => {
-            const dateA = new Date(a.createdAt || 0).getTime();
-            const dateB = new Date(b.createdAt || 0).getTime();
-            return dateB - dateA;
+    const orderedNotificationsQuery = query(
+      collection(db, "notifications"),
+      where("uid", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limitQuery(NOTIFICATIONS_PAGE_SIZE + 1)
+    );
+    const fallbackNotificationsQuery = query(
+      collection(db, "notifications"),
+      where("uid", "==", user.uid)
+    );
+
+    let unsubscribe = () => {};
+
+    const subscribeWithFallback = () =>
+      onSnapshot(
+        fallbackNotificationsQuery,
+        (snapshot) => {
+          const sortedItems = sortNotificationsByCreatedAt(
+            snapshot.docs.map(mapNotificationDoc)
+          );
+          const { items, cursor, hasMore } = getNotificationsFallbackPage(sortedItems);
+
+          if (notificationHistoryRef.current.length === 0) {
+            notificationCursorRef.current = cursor;
+            setHasMoreNotifications(hasMore);
+          }
+
+          setNotifications(mergeNotificationsById(items, notificationHistoryRef.current));
+          setNotificationsError("");
+          setNotificationsLoading(false);
+        },
+        (error) => {
+          logError("Error al cargar notificaciones", error, {
+            source: "notifications.listener-fallback",
           });
+          setNotificationsError("No se pudieron cargar las alertas. Revisa tu conexion e intenta nuevamente.");
+          setNotificationsLoading(false);
+        }
+      );
 
-        setNotifications(data);
+    unsubscribe = onSnapshot(
+      orderedNotificationsQuery,
+      (snapshot) => {
+        const pageDocs = snapshot.docs.slice(0, NOTIFICATIONS_PAGE_SIZE);
+        const data = pageDocs.map(mapNotificationDoc);
+
+        if (notificationHistoryRef.current.length === 0) {
+          notificationCursorRef.current = pageDocs.at(-1) || null;
+          setHasMoreNotifications(snapshot.docs.length > NOTIFICATIONS_PAGE_SIZE);
+        }
+
+        setNotifications(mergeNotificationsById(data, notificationHistoryRef.current));
+        setNotificationsError("");
         setNotificationsLoading(false);
       },
       (error) => {
-        console.error("Error al cargar notificaciones:", error);
+        if (isFirestoreIndexError(error)) {
+          unsubscribe();
+          unsubscribe = subscribeWithFallback();
+          return;
+        }
+
+        logError("Error al cargar notificaciones", error, {
+          source: "notifications.listener",
+        });
+        setNotificationsError("No se pudieron cargar las alertas. Revisa tu conexion e intenta nuevamente.");
         setNotificationsLoading(false);
       }
     );
@@ -184,14 +221,92 @@ export const AppProvider = ({ children }) => {
   }, [user?.uid]);
 
   const loadMoreNotifications = useCallback(async () => {
-    return null;
-  }, []);
+    if (!user?.uid || !notificationCursorRef.current || loadingMoreNotifications) {
+      return false;
+    }
+
+    setLoadingMoreNotifications(true);
+
+    try {
+      const queryConstraints = [
+        where("uid", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limitQuery(NOTIFICATIONS_PAGE_SIZE + 1),
+      ];
+
+      if (
+        notificationCursorRef.current &&
+        !(typeof notificationCursorRef.current === "object" &&
+          notificationCursorRef.current !== null &&
+          "offset" in notificationCursorRef.current)
+      ) {
+        queryConstraints.splice(2, 0, startAfter(notificationCursorRef.current));
+      }
+
+      try {
+        const snapshot = await getDocs(
+          query(collection(db, "notifications"), ...queryConstraints)
+        );
+        const pageDocs = snapshot.docs.slice(0, NOTIFICATIONS_PAGE_SIZE);
+        const data = pageDocs.map(mapNotificationDoc);
+
+        if (pageDocs.length > 0) {
+          notificationCursorRef.current = pageDocs.at(-1);
+        }
+
+        notificationHistoryRef.current = mergeNotificationsById(
+          notificationHistoryRef.current,
+          data
+        );
+
+        setNotifications((previous) =>
+          mergeNotificationsById(previous, notificationHistoryRef.current)
+        );
+        setHasMoreNotifications(snapshot.docs.length > NOTIFICATIONS_PAGE_SIZE);
+      } catch (error) {
+        if (!isFirestoreIndexError(error)) {
+          throw error;
+        }
+
+        const fallbackSnapshot = await getDocs(
+          query(collection(db, "notifications"), where("uid", "==", user.uid))
+        );
+        const sortedItems = sortNotificationsByCreatedAt(
+          fallbackSnapshot.docs.map(mapNotificationDoc)
+        );
+        const fallbackPage = getNotificationsFallbackPage(
+          sortedItems,
+          notificationCursorRef.current
+        );
+
+        notificationCursorRef.current = fallbackPage.cursor;
+        notificationHistoryRef.current = mergeNotificationsById(
+          notificationHistoryRef.current,
+          fallbackPage.items
+        );
+
+        setNotifications((previous) =>
+          mergeNotificationsById(previous, notificationHistoryRef.current)
+        );
+        setHasMoreNotifications(fallbackPage.hasMore);
+      }
+
+      return true;
+    } catch (error) {
+      logError("Error al cargar mas notificaciones", error, {
+        source: "notifications.load-more",
+      });
+      return false;
+    } finally {
+      setLoadingMoreNotifications(false);
+    }
+  }, [loadingMoreNotifications, user?.uid]);
 
   const updateNotificationSettings = useCallback(async (partialSettings) => {
-    if (!user?.uid) return;
+    if (!user?.uid) return false;
 
     const normalizedPatch = sanitizeNotificationPatch(partialSettings);
-    if (Object.keys(normalizedPatch).length === 0) return;
+    if (Object.keys(normalizedPatch).length === 0) return false;
 
     const now = new Date().toISOString();
     const storageKey = `nexofin_notification_settings_${user.uid}`;
@@ -211,8 +326,14 @@ export const AppProvider = ({ children }) => {
         },
         { merge: true }
       );
+      return true;
     } catch (error) {
-      console.error("Error al guardar preferencias de notificaciones:", error);
+      logError("Error al guardar preferencias de notificaciones", error, {
+        source: "notifications.settings-save",
+      });
+      setNotificationSettings(notificationSettings);
+      localStorage.setItem(storageKey, JSON.stringify(notificationSettings));
+      return false;
     }
   }, [notificationSettings, user?.uid]);
 
@@ -302,13 +423,13 @@ export const AppProvider = ({ children }) => {
 
       return docRef.id;
     } catch (error) {
-      console.error("Error al crear notificación:", error);
+      logError("Error al crear notificacion", error, { source: "notifications.create" });
       return null;
     }
   }, [user?.uid]);
 
   const markNotificationRead = useCallback(async (id) => {
-    if (!user?.uid || !id) return;
+    if (!user?.uid || !id) return false;
 
     try {
       await updateDoc(doc(db, "notifications", id), {
@@ -316,6 +437,9 @@ export const AppProvider = ({ children }) => {
         status: "read",
         updatedAt: new Date().toISOString(),
       });
+      notificationHistoryRef.current = notificationHistoryRef.current.map((item) =>
+        item.id === id ? { ...item, read: true, status: "read", updatedAt: new Date().toISOString() } : item
+      );
       setNotifications((previous) =>
         previous.map((item) =>
           item.id === id ? { ...item, read: true, status: "read", updatedAt: new Date().toISOString() } : item
@@ -323,20 +447,23 @@ export const AppProvider = ({ children }) => {
       );
       return true;
     } catch (error) {
-      console.error("Error al marcar notificación:", error);
+      logError("Error al marcar notificacion", error, {
+        source: "notifications.mark-read",
+      });
       return false;
     }
   }, [user?.uid]);
 
   const markAllNotificationsRead = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) return false;
 
     const unreadItems = notifications.filter((item) => !item.read && item.status !== "resolved");
-    await Promise.all(unreadItems.map((item) => markNotificationRead(item.id)));
+    const results = await Promise.all(unreadItems.map((item) => markNotificationRead(item.id)));
+    return results.every(Boolean);
   }, [markNotificationRead, notifications, user?.uid]);
 
   const resolveNotification = useCallback(async (id) => {
-    if (!user?.uid || !id) return;
+    if (!user?.uid || !id) return false;
 
     try {
       const now = new Date().toISOString();
@@ -346,6 +473,11 @@ export const AppProvider = ({ children }) => {
         resolvedAt: now,
         updatedAt: now,
       });
+      notificationHistoryRef.current = notificationHistoryRef.current.map((item) =>
+        item.id === id
+          ? { ...item, read: true, status: "resolved", resolvedAt: now, updatedAt: now }
+          : item
+      );
       setNotifications((previous) =>
         previous.map((item) =>
           item.id === id
@@ -355,30 +487,41 @@ export const AppProvider = ({ children }) => {
       );
       return true;
     } catch (error) {
-      console.error("Error al resolver notificación:", error);
+      logError("Error al resolver notificacion", error, {
+        source: "notifications.resolve",
+      });
       return false;
     }
   }, [user?.uid]);
 
   const deleteNotification = useCallback(async (id) => {
-    if (!user?.uid || !id) return;
+    if (!user?.uid || !id) return false;
 
     try {
       await deleteDoc(doc(db, "notifications", id));
+      notificationHistoryRef.current = notificationHistoryRef.current.filter(
+        (item) => item.id !== id
+      );
       setNotifications((previous) => previous.filter((item) => item.id !== id));
+      return true;
     } catch (error) {
-      console.error("Error al eliminar notificación:", error);
+      logError("Error al eliminar notificacion", error, {
+        source: "notifications.delete",
+      });
+      return false;
     }
   }, [user?.uid]);
 
   useEffect(() => {
     if (!user?.uid) {
       setBudgets([]);
+      setBudgetsError("");
       setLoading(false);
       return undefined;
     }
 
     setLoading(true);
+    setBudgetsError("");
     const q = query(collection(db, "budgets"), where("uid", "==", user.uid));
 
     const unsubscribe = onSnapshot(
@@ -389,10 +532,12 @@ export const AppProvider = ({ children }) => {
           ...docItem.data(),
         }));
         setBudgets(data);
+        setBudgetsError("");
         setLoading(false);
       },
       (error) => {
-        console.error("Error al cargar presupuestos:", error);
+        logError("Error al cargar presupuestos", error, { source: "budgets.listener" });
+        setBudgetsError("No se pudieron cargar las metas. Revisa tu conexion e intenta nuevamente.");
         setLoading(false);
       }
     );
@@ -400,68 +545,75 @@ export const AppProvider = ({ children }) => {
     return () => unsubscribe();
   }, [user?.uid]);
 
-  const upsertBudget = async ({ category, monthKey, limitAmount }) => {
-    if (!user?.uid) return null;
-
-    const normalizedCategory = normalizeText(category, 80);
-    const normalizedMonth = (monthKey || "").trim();
-    const amount = normalizePositiveAmount(limitAmount);
-
-    if (!normalizedCategory || !isValidMonthKey(normalizedMonth) || amount <= 0) return null;
-
-    const existing = budgets.find(
-      (item) => item.category === normalizedCategory && item.monthKey === normalizedMonth
-    );
-
-    if (existing?.id) {
-      await updateDoc(doc(db, "budgets", existing.id), {
-        limitAmount: amount,
-        updatedAt: new Date().toISOString(),
+  const upsertBudget = useCallback(
+    async ({ category, monthKey, limitAmount }) => {
+      return upsertBudgetDoc({
+        uid: user?.uid,
+        budgets,
+        category,
+        monthKey,
+        limitAmount,
       });
-      return existing.id;
-    }
+    },
+    [budgets, user?.uid]
+  );
 
-    const docRef = await addDoc(collection(db, "budgets"), {
-      uid: user.uid,
-      category: normalizedCategory,
-      monthKey: normalizedMonth,
-      limitAmount: amount,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    return docRef.id;
-  };
-
-  const deleteBudget = async (id) => {
-    if (!user?.uid || !id) return;
-    await deleteDoc(doc(db, "budgets", id));
-  };
+  const deleteBudget = useCallback(
+    async (id) => {
+      return deleteBudgetDoc({ uid: user?.uid, id });
+    },
+    [user?.uid]
+  );
 
   const unreadNotificationsCount = useMemo(
     () => notifications.filter((item) => !item.read && item.status !== "resolved").length,
     [notifications]
   );
 
-  const value = {
-    budgets,
-    loading,
-    notifications,
-    notificationsLoading,
-    loadingMoreNotifications,
-    hasMoreNotifications,
-    unreadNotificationsCount,
-    notificationSettings,
-    upsertBudget,
-    deleteBudget,
-    updateNotificationSettings,
-    createNotification,
-    markNotificationRead,
-    markAllNotificationsRead,
-    resolveNotification,
-    deleteNotification,
-    loadMoreNotifications,
-  };
+  const value = useMemo(
+    () => ({
+      budgets,
+      budgetsError,
+      loading,
+      notifications,
+      notificationsError,
+      notificationsLoading,
+      loadingMoreNotifications,
+      hasMoreNotifications,
+      unreadNotificationsCount,
+      notificationSettings,
+      upsertBudget,
+      deleteBudget,
+      updateNotificationSettings,
+      createNotification,
+      markNotificationRead,
+      markAllNotificationsRead,
+      resolveNotification,
+      deleteNotification,
+      loadMoreNotifications,
+    }),
+    [
+      budgets,
+      budgetsError,
+      loading,
+      notifications,
+      notificationsError,
+      notificationsLoading,
+      loadingMoreNotifications,
+      hasMoreNotifications,
+      unreadNotificationsCount,
+      notificationSettings,
+      upsertBudget,
+      deleteBudget,
+      updateNotificationSettings,
+      createNotification,
+      markNotificationRead,
+      markAllNotificationsRead,
+      resolveNotification,
+      deleteNotification,
+      loadMoreNotifications,
+    ]
+  );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

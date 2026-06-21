@@ -12,30 +12,13 @@ import MetricCard from "../components/ui/MetricCard";
 import PageHeader from "../components/ui/PageHeader";
 import SectionPanel from "../components/ui/SectionPanel";
 import { formatCurrency, formatSignedCurrency, formatTime, toDate } from "../utils/formatters";
+import { getTransactionType, matchesTypeFilter, normalizeComparableText } from "../utils/finance";
 
 const FILTER_OPTIONS = [
   { key: "all", label: "Todas" },
   { key: "income", label: "Ingresos" },
   { key: "expense", label: "Gastos" },
 ];
-
-function normalizeCategory(category = "") {
-  return String(category)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function isIncome(type) {
-  return type === "Ingreso" || type === "income";
-}
-
-function matchesTypeFilter(transaction, typeFilter) {
-  if (typeFilter === "income") return isIncome(transaction.type);
-  if (typeFilter === "expense") return !isIncome(transaction.type);
-  return true;
-}
 
 export default function CalendarPage() {
   const { transactions, addTransaction } = useContext(TransactionsContext);
@@ -58,7 +41,7 @@ export default function CalendarPage() {
             ...item,
             parsedDate,
             amount: Number(item.amount) || 0,
-            type: isIncome(item.type) ? "Ingreso" : "Gasto",
+            type: getTransactionType(item),
             category: item.category || "Sin categoría",
           };
         })
@@ -89,7 +72,7 @@ export default function CalendarPage() {
       .filter((item) =>
         categoryFilter === "all"
           ? true
-          : normalizeCategory(item.category) === normalizeCategory(categoryFilter)
+          : normalizeComparableText(item.category) === normalizeComparableText(categoryFilter)
       )
       .sort((a, b) => b.parsedDate - a.parsedDate);
   }, [selectedDate, normalizedTransactions, typeFilter, categoryFilter]);
@@ -98,11 +81,11 @@ export default function CalendarPage() {
     const rows = weekDays.map((day) => {
       const amount = normalizedTransactions
         .filter((item) => dayjs(item.parsedDate).isSame(day, "day"))
-        .filter((item) => !isIncome(item.type))
+        .filter((item) => getTransactionType(item) !== "Ingreso")
         .filter((item) =>
           categoryFilter === "all"
             ? true
-            : normalizeCategory(item.category) === normalizeCategory(categoryFilter)
+            : normalizeComparableText(item.category) === normalizeComparableText(categoryFilter)
         )
         .reduce((sum, item) => sum + item.amount, 0);
 
@@ -325,7 +308,7 @@ export default function CalendarPage() {
             action={
               <Button
                 type="button"
-                variant="primary"
+                variant="brand"
                 onClick={() => setShowAddModal(true)}
               >
                 <Plus size={16} />
@@ -365,7 +348,7 @@ export default function CalendarPage() {
 
       <button
         onClick={() => setShowAddModal(true)}
-        className="fixed bottom-24 right-5 sm:bottom-8 sm:right-8 bg-[#0a2b6e] text-white rounded-full p-4 shadow-lg hover:bg-[#081f52] transition"
+        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white shadow-lg transition-all duration-200 hover:scale-110 sm:bottom-6 sm:right-6"
       >
         <Plus size={24} />
       </button>

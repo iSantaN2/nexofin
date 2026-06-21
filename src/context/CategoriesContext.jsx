@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   collection,
   addDoc,
@@ -8,11 +8,14 @@ import {
   onSnapshot,
   getDocs,
   query,
+  setDoc,
   where,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { logError } from "../services/logger";
 import toast from "react-hot-toast";
 import { useAuth } from "./AuthContext";
+import { isAccountDeletionInProgress } from "../utils/accountDeletion";
 import { normalizeCategoryType, normalizeText } from "../utils/validation";
 
 const CategoriesContext = createContext();
@@ -26,41 +29,85 @@ const DEFAULT_CATEGORIES = [
   { name: "Salario", type: "ingreso" },
 ];
 
+function buildDefaultCategoryId(uid, category) {
+  return `${uid}_default_${category.type}_${category.name}`
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, 180);
+}
+
 export const CategoriesProvider = ({ children }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState([]);
-  const [initialized, setInitialized] = useState(false);
+  const initializedUidRef = useRef(null);
+  const initializingDefaultsRef = useRef(false);
 
   useEffect(() => {
     if (!user?.uid) {
       setCategories([]);
-      setInitialized(false);
+      initializedUidRef.current = null;
+      initializingDefaultsRef.current = false;
       return;
     }
 
     const q = query(collection(db, "categories"), where("uid", "==", user.uid));
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setCategories(data);
-
-      if (data.length === 0 && !initialized) {
-        setInitialized(true);
-        const existing = await getDocs(q);
-        if (existing.empty) {
-          for (const cat of DEFAULT_CATEGORIES) {
-            await addDoc(collection(db, "categories"), { ...cat, uid: user.uid });
-          }
-          toast.success("Categorías iniciales añadidas");
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot) => {
+        if (isAccountDeletionInProgress(user.uid)) {
+          setCategories([]);
+          return;
         }
+
+        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setCategories(data);
+
+        if (data.length > 0) {
+          initializedUidRef.current = user.uid;
+          return;
+        }
+
+        if (initializedUidRef.current === user.uid || initializingDefaultsRef.current) {
+          return;
+        }
+
+        initializingDefaultsRef.current = true;
+
+        try {
+          const existing = await getDocs(q);
+          if (existing.empty) {
+            await Promise.all(
+              DEFAULT_CATEGORIES.map((cat) =>
+                setDoc(doc(db, "categories", buildDefaultCategoryId(user.uid, cat)), {
+                  ...cat,
+                  uid: user.uid,
+                })
+              )
+            );
+            toast.success("Categorias iniciales anadidas");
+          }
+          initializedUidRef.current = user.uid;
+        } catch (error) {
+          logError("Error al inicializar categorias", error, { source: "categories.seed" });
+          toast.error("No se pudieron crear las categorias iniciales");
+        } finally {
+          initializingDefaultsRef.current = false;
+        }
+      },
+      (error) => {
+        logError("Error al cargar categorias", error, { source: "categories.listener" });
+        setCategories([]);
+        toast.error("No se pudieron cargar las categorias");
       }
-    });
+    );
 
     return () => unsubscribe();
-  }, [user?.uid, initialized]);
+  }, [user?.uid]);
 
   const addCategory = async (name, type = "gasto") => {
-    if (!user?.uid) return toast.error("Debes iniciar sesión");
+    if (!user?.uid) return toast.error("Debes iniciar sesion");
 
     const trimmed = normalizeText(name, 60);
     const safeType = normalizeCategoryType(type);
@@ -73,16 +120,16 @@ export const CategoriesProvider = ({ children }) => {
     );
 
     if (duplicate) {
-      toast.error(`La categoría "${trimmed}" ya existe en ${safeType}.`);
+      toast.error(`La categoria "${trimmed}" ya existe en ${safeType}.`);
       return;
     }
 
     try {
       await addDoc(collection(db, "categories"), { name: trimmed, type: safeType, uid: user.uid });
-      toast.success(`Categoría "${trimmed}" añadida correctamente a ${safeType}`);
+      toast.success(`Categoria "${trimmed}" anadida correctamente a ${safeType}`);
     } catch (error) {
-      console.error("Error al añadir categoría:", error);
-      toast.error("Error al añadir categoría");
+      logError("Error al anadir categoria", error, { source: "categories.add" });
+      toast.error("Error al anadir categoria");
     }
   };
 
@@ -99,27 +146,27 @@ export const CategoriesProvider = ({ children }) => {
         c.type?.toLowerCase() === newType
     );
 
-    if (duplicate) return toast.error(`La categoría "${trimmedName}" ya existe en ${newType}.`);
+    if (duplicate) return toast.error(`La categoria "${trimmedName}" ya existe en ${newType}.`);
 
     try {
       await updateDoc(doc(db, "categories", id), {
         name: trimmedName,
         type: newType,
       });
-      toast.success("Categoría actualizada correctamente");
+      toast.success("Categoria actualizada correctamente");
     } catch (error) {
-      console.error("Error al editar categoría:", error);
-      toast.error("No se pudo actualizar la categoría");
+      logError("Error al editar categoria", error, { source: "categories.edit" });
+      toast.error("No se pudo actualizar la categoria");
     }
   };
 
   const deleteCategory = async (id) => {
     try {
       await deleteDoc(doc(db, "categories", id));
-      toast.success("Categoría eliminada correctamente");
+      toast.success("Categoria eliminada correctamente");
     } catch (error) {
-      console.error("Error al eliminar categoría:", error);
-      toast.error("No se pudo eliminar la categoría");
+      logError("Error al eliminar categoria", error, { source: "categories.delete" });
+      toast.error("No se pudo eliminar la categoria");
     }
   };
 

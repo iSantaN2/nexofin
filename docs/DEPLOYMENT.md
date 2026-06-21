@@ -10,9 +10,12 @@ Ejecuta:
 npm install
 npm run quality
 npm run e2e
+npm run test:rules
 ```
 
 Si `npm run e2e` esta configurado sin credenciales, los tests que dependen de Firebase Auth pueden quedar en skip. Para validar login real, usa una cuenta de testing dedicada.
+
+`npm run test:rules` requiere JDK 21 o superior porque Firebase Emulator ya no soporta runtimes Java anteriores.
 
 ## 2. Firebase
 
@@ -22,11 +25,33 @@ Revisa en Firebase Console:
 - Authentication > Settings > Authorized domains incluye tu dominio final.
 - Firestore Database creado.
 - Firestore Rules publicado con el contenido de `firestore.rules`.
+- Firestore Indexes publicado con el contenido de `firestore.indexes.json`.
+
+Antes de desplegar con CLI, vincula el repo a tu proyecto:
+
+```powershell
+firebase login
+firebase use --add
+```
+
+Si quieres dejar una referencia local del proyecto por defecto, copia `.firebaserc.example` como `.firebaserc` y reemplaza el project id.
 
 Para publicar reglas con Firebase CLI:
 
 ```powershell
-firebase deploy --only firestore:rules
+npm run deploy:firestore:rules
+```
+
+Para publicar indices con Firebase CLI:
+
+```powershell
+npm run deploy:firestore:indexes
+```
+
+Para publicar ambos en un solo paso:
+
+```powershell
+npm run deploy:firestore
 ```
 
 ## 3. Vercel
@@ -57,13 +82,22 @@ Configuracion incluida en `firebase.json`:
 - Carpeta publica: `dist`.
 - Rewrites SPA hacia `/index.html`.
 - Reglas Firestore desde `firestore.rules`.
+- Indices Firestore desde `firestore.indexes.json`.
 
 Comandos:
 
 ```powershell
 npm run build
-firebase deploy --only hosting,firestore:rules
+npm run deploy:firestore
+firebase deploy --only hosting
 ```
+
+Indices compuestos obligatorios para evitar errores de lectura en produccion:
+
+- `notifications`: `uid` ASC + `createdAt` DESC
+- `transactions`: `uid` ASC + `createdAt` DESC
+
+Si esos indices no estan construidos en Firebase, la app puede guardar datos pero fallar al cargar historial o alertas.
 
 ## 5. GitHub Actions
 

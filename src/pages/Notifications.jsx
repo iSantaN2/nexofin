@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { AppContext } from "../context/AppContext";
+import { useNotifications } from "../hooks/useNotifications";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
@@ -145,6 +145,7 @@ function NotificationIcon({ severity, resolved }) {
 export default function Notifications() {
   const {
     notifications,
+    notificationsError,
     notificationsLoading,
     loadingMoreNotifications,
     hasMoreNotifications,
@@ -154,7 +155,7 @@ export default function Notifications() {
     resolveNotification,
     deleteNotification,
     loadMoreNotifications,
-  } = useContext(AppContext);
+  } = useNotifications();
   const [filter, setFilter] = useState("all");
 
   const activeNotifications = useMemo(
@@ -192,8 +193,12 @@ export default function Notifications() {
   }, [filteredNotifications]);
 
   const handleMarkAllRead = async () => {
-    await markAllNotificationsRead();
-    toast.success("Alertas marcadas como leídas");
+    const success = await markAllNotificationsRead();
+    if (success) {
+      toast.success("Alertas marcadas como leídas");
+    } else {
+      toast.error("No se pudieron marcar todas las alertas");
+    }
   };
 
   const handleMarkRead = async (id) => {
@@ -215,8 +220,19 @@ export default function Notifications() {
   };
 
   const handleDelete = async (id) => {
-    await deleteNotification(id);
-    toast.success("Alerta eliminada");
+    const success = await deleteNotification(id);
+    if (success) {
+      toast.success("Alerta eliminada");
+    } else {
+      toast.error("No se pudo eliminar la alerta");
+    }
+  };
+
+  const handleLoadMore = async () => {
+    const success = await loadMoreNotifications();
+    if (!success) {
+      toast.error("No se pudo cargar mas historial");
+    }
   };
 
   return (
@@ -291,7 +307,7 @@ export default function Notifications() {
               onClick={() => setFilter(item.key)}
               className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                 filter === item.key
-                  ? "bg-[#0a2b6e] text-white"
+                  ? "bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white shadow-sm"
                   : "bg-[#eff8ff] text-[#0a2b6e] hover:bg-[#e3f2ff]"
               }`}
             >
@@ -302,6 +318,10 @@ export default function Notifications() {
 
         {notificationsLoading ? (
           <div className="py-10 text-center text-sm text-slate-500">Cargando alertas...</div>
+        ) : notificationsError ? (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            {notificationsError}
+          </div>
         ) : filteredNotifications.length === 0 ? (
           <EmptyState
             title="Sin alertas para mostrar"
@@ -310,7 +330,7 @@ export default function Notifications() {
               <div className="flex flex-wrap justify-center gap-2">
                 <Link
                   to="/budgets"
-                  className="rounded-xl bg-[#0a2b6e] px-4 py-2 text-sm font-semibold text-white hover:bg-[#081f52]"
+                  className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#1f67ff] to-[#11c69a] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(31,103,255,0.2)] transition hover:-translate-y-0.5"
                 >
                   Revisar metas
                 </Link>
@@ -389,7 +409,7 @@ export default function Notifications() {
                             onClick={() => {
                               if (!item.read && !resolved) markNotificationRead(item.id);
                             }}
-                            className="inline-flex items-center gap-1 rounded-lg bg-[#0a2b6e] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#081f52]"
+                            className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-[#1f67ff] to-[#11c69a] px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(31,103,255,0.2)] transition hover:-translate-y-0.5"
                           >
                             {action.label}
                             <ArrowRight size={15} />
@@ -406,33 +426,37 @@ export default function Notifications() {
                             </Link>
                           ) : null}
                           {!resolved ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => handleResolve(item.id)}
-                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
+                              variant="success"
+                              size="sm"
                             >
                               <ShieldCheck size={15} />
                               Resolver
-                            </button>
+                            </Button>
                           ) : null}
                           {!item.read && !resolved ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => handleMarkRead(item.id)}
-                              className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-medium text-[#0a2b6e] shadow-sm hover:bg-[#eff8ff]"
+                              variant="outline"
+                              size="sm"
                             >
                               <Check size={15} />
                               Leída
-                            </button>
+                            </Button>
                           ) : null}
-                          <button
+                          <Button
                             type="button"
                             onClick={() => handleDelete(item.id)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50"
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
                           >
                             <Trash2 size={15} />
                             Eliminar
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </article>
@@ -446,7 +470,7 @@ export default function Notifications() {
                 <Button
                   type="button"
                   variant="soft"
-                  onClick={loadMoreNotifications}
+                  onClick={handleLoadMore}
                   disabled={loadingMoreNotifications}
                 >
                   {loadingMoreNotifications ? "Cargando historial..." : "Cargar más alertas"}

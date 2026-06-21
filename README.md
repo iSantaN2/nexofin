@@ -52,6 +52,7 @@ Importante: no subas `.env` al repositorio. Ya esta protegido en `.gitignore`.
 | `npm run preview` | Previsualiza el build local. |
 | `npm run lint` | Revisa calidad de codigo con ESLint. |
 | `npm run test` | Ejecuta pruebas unitarias con Vitest. |
+| `npm run test:rules` | Ejecuta pruebas de `firestore.rules` con Firebase Emulator. |
 | `npm run test:watch` | Ejecuta Vitest en modo observacion. |
 | `npm run e2e` | Ejecuta pruebas E2E con Playwright. |
 | `npm run e2e:ui` | Abre Playwright en modo visual. |
@@ -64,8 +65,37 @@ Antes de usar la app en produccion, revisa:
 - Firebase Authentication con proveedor Email/Password activado.
 - Cloud Firestore creado.
 - Reglas publicadas desde `firestore.rules`.
+- Indices compuestos publicados desde `firestore.indexes.json`.
 - Dominios autorizados en Authentication para local y produccion.
 - Variables `VITE_FIREBASE_*` configuradas en el hosting.
+
+## Configurar Firebase CLI
+
+Antes de desplegar reglas o indices:
+
+```powershell
+firebase login
+firebase use --add
+```
+
+Selecciona tu proyecto Firebase real y guardalo como proyecto por defecto. Si prefieres dejarlo versionado como referencia local, copia `.firebaserc.example` a `.firebaserc` y reemplaza `your-firebase-project-id`.
+
+## Pruebas de Firestore Rules
+
+NexoFin incluye una suite para validar ownership y reglas criticas de Firestore.
+
+Requisitos:
+
+- JDK 21 o superior.
+- Dependencias instaladas con `npm install`.
+
+Ejecucion:
+
+```powershell
+npm run test:rules
+```
+
+Nota: en algunos entornos Windows con Java 8 heredado en el `PATH`, puede ser necesario abrir una terminal nueva o fijar `JAVA_HOME` hacia el JDK 21 antes de ejecutar el comando.
 
 ## Pruebas E2E
 
@@ -82,7 +112,13 @@ Variables disponibles:
 - `E2E_REGISTER_PASSWORD`: password para el test de registro.
 - `E2E_REGISTER_DOMAIN`: dominio usado para generar correos de registro.
 
-Ejemplo local en PowerShell:
+Playwright ahora carga automaticamente `E2E_*` desde `.env` y `.env.local`, asi que si ya estan definidas ahi basta con ejecutar:
+
+```powershell
+npm run e2e
+```
+
+Si quieres sobreescribirlas solo para una terminal puntual, puedes hacerlo manualmente:
 
 ```powershell
 $env:E2E_AUTH_ENABLED="true"
@@ -137,9 +173,24 @@ Opcionales:
 
 1. Instala Firebase CLI si no lo tienes.
 2. Ejecuta `npm run build`.
-3. Ejecuta `firebase deploy --only hosting,firestore:rules`.
+3. Publica reglas e indices de Firestore.
+4. Ejecuta `firebase deploy --only hosting`.
 
 `firebase.json` ya apunta a `dist` y a `firestore.rules`.
+
+Comandos recomendados:
+
+```powershell
+npm run deploy:firestore
+firebase deploy --only hosting
+```
+
+Importante: NexoFin depende de indices compuestos para `transactions` y `notifications` con:
+
+- `uid` ascendente
+- `createdAt` descendente
+
+Sin esos indices, guardar puede funcionar pero cargar historial y alertas puede fallar o degradarse a fallback local.
 
 ## Checklist antes de produccion
 

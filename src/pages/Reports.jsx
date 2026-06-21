@@ -16,160 +16,54 @@ import {
 import dayjs from "dayjs";
 import { FileDown, Eye, FileText, X, PlusCircle, FileSpreadsheet } from "lucide-react";
 import "dayjs/locale/es";
+import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
-import PageHeader from "../components/ui/PageHeader";
+import PageHero from "../components/ui/PageHero";
 import SectionPanel from "../components/ui/SectionPanel";
 import UiMetricCard from "../components/ui/MetricCard";
+import { calculateTotals } from "../utils/finance";
+import {
+  PERIODS,
+  buildBaseFileName,
+  buildPeriodBarData,
+  buildReportInsights,
+  buildTrendData,
+  escapeCsvValue,
+  filterTransactionsByCategory,
+  filterTransactionsByRange,
+  formatAccountingDateTime,
+  getAverageTicket,
+  getMethodsBreakdown,
+  getPeriodLabel,
+  getPeriodRange,
+  getReportCategories,
+  getReportComparison,
+  getReportHealth,
+  getTopExpenseCategories,
+  normalizeReportTransactions,
+} from "../services/reportAnalytics";
 
 dayjs.locale("es");
 
-const PERIODS = [
-  { value: "7days", label: "Últimos 7 días" },
-  { value: "30days", label: "Últimos 30 días" },
-  { value: "week", label: "Esta semana" },
-  { value: "month", label: "Este mes" },
-  { value: "year", label: "Este año" },
-  { value: "all", label: "Todo" },
-];
-
-function normalizeType(type) {
-  return type === "Ingreso" || type === "income" ? "Ingreso" : "Gasto";
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-function normalizeField(value, fallback) {
-  if (!value) return fallback;
-  if (typeof value === "object") return value.name || fallback;
-  return value;
-}
+function buildExcelTable(headers, rows) {
+  const headerCells = headers.map((value) => `<th>${escapeHtml(value)}</th>`).join("");
+  const bodyRows = rows
+    .map(
+      (row) =>
+        `<tr>${row.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`
+    )
+    .join("");
 
-function formatAccountingDateTime(tx) {
-  return `${tx.date.format("DD/MM/YYYY")} ${tx.createdAt.format("HH:mm")}`;
-}
-
-function getPeriodRange(filter) {
-  const now = dayjs();
-
-  if (filter === "all") {
-    return { label: "Todo el historial", start: null, end: null, previousStart: null, previousEnd: null };
-  }
-
-  if (filter === "7days") {
-    const start = now.subtract(6, "day").startOf("day");
-    const end = now.endOf("day");
-    return {
-      label: "Últimos 7 días",
-      start,
-      end,
-      previousStart: start.subtract(7, "day"),
-      previousEnd: end.subtract(7, "day"),
-    };
-  }
-
-  if (filter === "30days") {
-    const start = now.subtract(29, "day").startOf("day");
-    const end = now.endOf("day");
-    return {
-      label: "Últimos 30 días",
-      start,
-      end,
-      previousStart: start.subtract(30, "day"),
-      previousEnd: end.subtract(30, "day"),
-    };
-  }
-
-  if (filter === "week") {
-    const start = now.startOf("week");
-    const end = now.endOf("week");
-    return {
-      label: "Semana actual",
-      start,
-      end,
-      previousStart: start.subtract(1, "week"),
-      previousEnd: end.subtract(1, "week"),
-    };
-  }
-
-  if (filter === "month") {
-    const start = now.startOf("month");
-    const end = now.endOf("month");
-    return {
-      label: "Mes actual",
-      start,
-      end,
-      previousStart: start.subtract(1, "month"),
-      previousEnd: end.subtract(1, "month"),
-    };
-  }
-
-  const start = now.startOf("year");
-  const end = now.endOf("year");
-  return {
-    label: "Año actual",
-    start,
-    end,
-    previousStart: start.subtract(1, "year"),
-    previousEnd: end.subtract(1, "year"),
-  };
-}
-
-function isInRange(date, start, end) {
-  if (!start || !end) return true;
-  if (!date?.isValid?.()) return false;
-  return (date.isAfter(start) || date.isSame(start)) && (date.isBefore(end) || date.isSame(end));
-}
-
-function calculateTotals(items) {
-  let ingresos = 0;
-  let gastos = 0;
-
-  items.forEach((item) => {
-    if (item.type === "Ingreso") ingresos += item.amount;
-    else gastos += item.amount;
-  });
-
-  return { ingresos, gastos, balance: ingresos - gastos };
-}
-
-function buildRangeLabel(filter) {
-  switch (filter) {
-    case "7days":
-      return "7dias";
-    case "30days":
-      return "30dias";
-    case "week":
-      return "semana";
-    case "month":
-      return "mes";
-    case "year":
-      return "anio";
-    default:
-      return "general";
-  }
-}
-
-function buildBaseFileName(filter, selectedCategory) {
-  const dateStamp = dayjs().format("YYYYMMDD_HHmm");
-  const categoryStamp = selectedCategory === "todos" ? "todas" : selectedCategory;
-  return `NexoFin_${buildRangeLabel(filter)}_${categoryStamp}_${dateStamp}`;
-}
-
-function escapeCsvValue(value) {
-  const text = String(value ?? "");
-  return `"${text.replaceAll('"', '""')}"`;
-}
-
-function getHealth(totals) {
-  const savingsRate = totals.ingresos > 0 ? (totals.balance / totals.ingresos) * 100 : 0;
-
-  if (savingsRate >= 20) {
-    return { label: "Saludable", color: "text-emerald-600", description: `Ahorro ${savingsRate.toFixed(1)}%` };
-  }
-
-  if (savingsRate >= 5) {
-    return { label: "Atención", color: "text-amber-600", description: `Ahorro ${savingsRate.toFixed(1)}%` };
-  }
-
-  return { label: "Riesgo", color: "text-red-600", description: `Ahorro ${savingsRate.toFixed(1)}%` };
+  return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
 }
 
 export default function Reports() {
@@ -180,176 +74,92 @@ export default function Reports() {
   const [showModal, setShowModal] = useState(false);
 
   const cleanTransactions = useMemo(
-    () =>
-      transactions
-        .map((tx) => {
-          const date = tx.date?.seconds ? dayjs.unix(tx.date.seconds) : dayjs(tx.date);
-          const createdAt = tx.createdAt?.seconds
-            ? dayjs.unix(tx.createdAt.seconds)
-            : tx.createdAt
-            ? dayjs(tx.createdAt)
-            : date;
-
-          return {
-            ...tx,
-            amount: Number(tx.amount) || 0,
-            type: normalizeType(tx.type),
-            category: normalizeField(tx.category, "Sin categoría"),
-            account: normalizeField(tx.account, "Sin método"),
-            notes: tx.notes || "",
-            date,
-            createdAt,
-          };
-        })
-        .filter((tx) => tx.date?.isValid?.()),
+    () => normalizeReportTransactions(transactions),
     [transactions]
   );
 
-  const categories = useMemo(
-    () => ["todos", ...new Set(cleanTransactions.map((tx) => tx.category).filter(Boolean))],
-    [cleanTransactions]
-  );
+  const categories = useMemo(() => getReportCategories(cleanTransactions), [cleanTransactions]);
 
   const range = useMemo(() => getPeriodRange(filter), [filter]);
 
-  const rangeTransactions = useMemo(() => {
-    return cleanTransactions.filter((tx) => isInRange(tx.date, range.start, range.end));
-  }, [cleanTransactions, range]);
+  const rangeTransactions = useMemo(
+    () => filterTransactionsByRange(cleanTransactions, range),
+    [cleanTransactions, range]
+  );
 
-  const visibleTransactions = useMemo(() => {
-    if (selectedCategory === "todos") return rangeTransactions;
-    return rangeTransactions.filter((tx) => tx.category === selectedCategory);
-  }, [rangeTransactions, selectedCategory]);
+  const visibleTransactions = useMemo(
+    () => filterTransactionsByCategory(rangeTransactions, selectedCategory),
+    [rangeTransactions, selectedCategory]
+  );
 
   const previousTransactions = useMemo(() => {
     if (!range.previousStart || !range.previousEnd) return [];
 
-    const base = cleanTransactions.filter((tx) =>
-      isInRange(tx.date, range.previousStart, range.previousEnd)
+    return filterTransactionsByCategory(
+      filterTransactionsByRange(cleanTransactions, {
+        start: range.previousStart,
+        end: range.previousEnd,
+      }),
+      selectedCategory
     );
-
-    if (selectedCategory === "todos") return base;
-    return base.filter((tx) => tx.category === selectedCategory);
   }, [cleanTransactions, range, selectedCategory]);
 
   const totals = useMemo(() => calculateTotals(visibleTransactions), [visibleTransactions]);
   const previousTotals = useMemo(() => calculateTotals(previousTransactions), [previousTransactions]);
 
-  const comparison = useMemo(() => {
-    const diffBalance = totals.balance - previousTotals.balance;
-    const diffIncome = totals.ingresos - previousTotals.ingresos;
-    const diffExpense = totals.gastos - previousTotals.gastos;
+  const comparison = useMemo(
+    () => getReportComparison(totals, previousTotals),
+    [totals, previousTotals]
+  );
 
-    const pctBalance =
-      previousTotals.balance === 0 ? null : (diffBalance / Math.abs(previousTotals.balance)) * 100;
+  const averageTicket = useMemo(
+    () => getAverageTicket(visibleTransactions, totals),
+    [visibleTransactions, totals]
+  );
 
-    return { diffBalance, diffIncome, diffExpense, pctBalance };
-  }, [totals, previousTotals]);
+  const health = useMemo(() => getReportHealth(totals), [totals]);
 
-  const averageTicket = useMemo(() => {
-    const incomeItems = visibleTransactions.filter((tx) => tx.type === "Ingreso");
-    const expenseItems = visibleTransactions.filter((tx) => tx.type === "Gasto");
+  const topExpenseCategories = useMemo(
+    () => getTopExpenseCategories(visibleTransactions, totals.gastos),
+    [visibleTransactions, totals.gastos]
+  );
 
-    return {
-      incomeAvg: incomeItems.length ? totals.ingresos / incomeItems.length : 0,
-      expenseAvg: expenseItems.length ? totals.gastos / expenseItems.length : 0,
-    };
-  }, [visibleTransactions, totals]);
+  const methodsBreakdown = useMemo(
+    () => getMethodsBreakdown(visibleTransactions),
+    [visibleTransactions]
+  );
 
-  const health = useMemo(() => getHealth(totals), [totals]);
-
-  const topExpenseCategories = useMemo(() => {
-    const grouped = {};
-    visibleTransactions
-      .filter((tx) => tx.type === "Gasto")
-      .forEach((tx) => {
-        grouped[tx.category] = (grouped[tx.category] || 0) + tx.amount;
-      });
-
-    const totalExpense = totals.gastos || 1;
-    return Object.entries(grouped)
-      .map(([name, amount]) => ({
-        name,
-        amount,
-        percent: (amount / totalExpense) * 100,
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
-  }, [visibleTransactions, totals.gastos]);
-
-  const methodsBreakdown = useMemo(() => {
-    const grouped = {};
-
-    visibleTransactions
-      .filter((tx) => tx.type === "Gasto")
-      .forEach((tx) => {
-        grouped[tx.account] = (grouped[tx.account] || 0) + tx.amount;
-      });
-
-    return Object.entries(grouped)
-      .map(([name, amount]) => ({ name, amount }))
-      .sort((a, b) => b.amount - a.amount);
-  }, [visibleTransactions]);
-
-  const trendData = useMemo(() => {
-    return Array.from({ length: 6 }).map((_, index) => {
-      const month = dayjs().startOf("month").subtract(5 - index, "month");
-      const monthKey = month.format("YYYY-MM");
-
-      const monthTransactions = cleanTransactions.filter((tx) => {
-        if (tx.date.format("YYYY-MM") !== monthKey) return false;
-        if (selectedCategory === "todos") return true;
-        return tx.category === selectedCategory;
-      });
-
-      const monthTotals = calculateTotals(monthTransactions);
-      return {
-        month: month.format("MMM"),
-        ingresos: monthTotals.ingresos,
-        gastos: monthTotals.gastos,
-        balance: monthTotals.balance,
-      };
-    });
-  }, [cleanTransactions, selectedCategory]);
+  const trendData = useMemo(
+    () => buildTrendData({ transactions: cleanTransactions, selectedCategory }),
+    [cleanTransactions, selectedCategory]
+  );
 
   const periodBarData = useMemo(
-    () => [{ name: range.label, ingresos: totals.ingresos, gastos: totals.gastos }],
+    () => buildPeriodBarData({ rangeLabel: range.label, totals }),
     [range.label, totals]
   );
 
-  const insights = useMemo(() => {
-    const lines = [];
-
-    if (topExpenseCategories[0]) {
-      lines.push(
-        `Tu mayor gasto fue ${topExpenseCategories[0].name} con S/ ${topExpenseCategories[0].amount.toFixed(2)}.`
-      );
-    }
-
-    if (previousTransactions.length > 0) {
-      const direction = comparison.diffExpense > 0 ? "más" : "menos";
-      lines.push(
-        `Gastaste S/ ${Math.abs(comparison.diffExpense).toFixed(2)} ${direction} que el periodo anterior.`
-      );
-    }
-
-    if (methodsBreakdown[0]) {
-      lines.push(`Tu método más usado fue ${methodsBreakdown[0].name}.`);
-    }
-
-    return lines;
-  }, [topExpenseCategories, previousTransactions.length, comparison.diffExpense, methodsBreakdown]);
+  const insights = useMemo(
+    () =>
+      buildReportInsights({
+        topExpenseCategories,
+        previousTransactionsLength: previousTransactions.length,
+        diffExpense: comparison.diffExpense,
+        methodsBreakdown,
+      }),
+    [topExpenseCategories, previousTransactions.length, comparison.diffExpense, methodsBreakdown]
+  );
 
   const exportToCSV = () => {
     const metaRows = [
       ["Reporte", "NexoFin"],
-      ["Periodo", PERIODS.find((item) => item.value === filter)?.label || "Todo"],
-      ["Categoría", selectedCategory],
+      ["Periodo", getPeriodLabel(filter)],
+      ["Categoria", selectedCategory],
       ["Generado", dayjs().format("DD/MM/YYYY HH:mm")],
       [],
     ];
 
-    const headers = ["Fecha", "Tipo", "Categoría", "Método", "Monto", "Notas"];
+    const headers = ["Fecha", "Tipo", "Categoria", "Metodo", "Monto", "Notas"];
     const rows = visibleTransactions.map((tx) => [
       formatAccountingDateTime(tx),
       tx.type,
@@ -382,47 +192,56 @@ export default function Reports() {
     URL.revokeObjectURL(url);
   };
 
-  const exportToExcel = async () => {
-    const { utils, writeFile } = await import("xlsx");
+  const exportToExcel = () => {
     const baseFileName = buildBaseFileName(filter, selectedCategory);
-    const periodLabel = PERIODS.find((item) => item.value === filter)?.label || "Todo";
+    const periodLabel = getPeriodLabel(filter);
+    const summaryTable = buildExcelTable(
+      ["Indicador", "Valor"],
+      [
+        ["Reporte", "NexoFin"],
+        ["Periodo", periodLabel],
+        ["Categoria", selectedCategory],
+        ["Generado", dayjs().format("DD/MM/YYYY HH:mm")],
+        ["Total ingresos", totals.ingresos.toFixed(2)],
+        ["Total gastos", totals.gastos.toFixed(2)],
+        ["Balance", totals.balance.toFixed(2)],
+        ["Ticket ingreso", averageTicket.incomeAvg.toFixed(2)],
+        ["Ticket gasto", averageTicket.expenseAvg.toFixed(2)],
+      ]
+    );
+    const movementsTable = buildExcelTable(
+      ["Fecha", "Tipo", "Categoria", "Metodo", "Monto", "Notas"],
+      visibleTransactions.map((tx) => [
+        formatAccountingDateTime(tx),
+        tx.type,
+        tx.category,
+        tx.account,
+        tx.amount.toFixed(2),
+        tx.notes || "",
+      ])
+    );
+    const trendTable = buildExcelTable(
+      ["Mes", "Ingresos", "Gastos", "Balance"],
+      trendData.map((item) => [
+        item.month,
+        item.ingresos.toFixed(2),
+        item.gastos.toFixed(2),
+        item.balance.toFixed(2),
+      ])
+    );
+    const workbookHtml = `<!doctype html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:24px}th,td{border:1px solid #cbd5e1;padding:6px 10px}th{background:#0a2b6e;color:#fff}h2{color:#0a2b6e}</style></head><body><h2>Resumen</h2>${summaryTable}<h2>Movimientos</h2>${movementsTable}<h2>Tendencia</h2>${trendTable}</body></html>`;
+    const blob = new Blob([`\uFEFF${workbookHtml}`], {
+      type: "application/vnd.ms-excel;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
 
-    const summaryRows = [
-      ["Reporte", "NexoFin"],
-      ["Periodo", periodLabel],
-      ["Categoría", selectedCategory],
-      ["Generado", dayjs().format("DD/MM/YYYY HH:mm")],
-      [],
-      ["Indicador", "Monto"],
-      ["Total ingresos", totals.ingresos],
-      ["Total gastos", totals.gastos],
-      ["Balance", totals.balance],
-      ["Ticket ingreso", averageTicket.incomeAvg],
-      ["Ticket gasto", averageTicket.expenseAvg],
-    ];
-
-    const movementRows = visibleTransactions.map((tx) => ({
-      Fecha: formatAccountingDateTime(tx),
-      Tipo: tx.type,
-      Categoría: tx.category,
-      Método: tx.account,
-      Monto: tx.amount,
-      Notas: tx.notes || "",
-    }));
-
-    const trendRows = trendData.map((item) => ({
-      Mes: item.month,
-      Ingresos: item.ingresos,
-      Gastos: item.gastos,
-      Balance: item.balance,
-    }));
-
-    const workbook = utils.book_new();
-    utils.book_append_sheet(workbook, utils.aoa_to_sheet(summaryRows), "Resumen");
-    utils.book_append_sheet(workbook, utils.json_to_sheet(movementRows), "Movimientos");
-    utils.book_append_sheet(workbook, utils.json_to_sheet(trendRows), "Tendencia");
-
-    writeFile(workbook, `${baseFileName}.xlsx`);
+    link.href = url;
+    link.download = `${baseFileName}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const exportToPDF = async () => {
@@ -431,15 +250,16 @@ export default function Reports() {
       import("jspdf-autotable"),
     ]);
     const doc = new jsPDF();
+
     doc.text("Reporte financiero - NexoFin", 14, 15);
     doc.setFontSize(10);
-    doc.text(`Periodo: ${PERIODS.find((item) => item.value === filter)?.label || "Todo"}`, 14, 22);
-    doc.text(`Categoría: ${selectedCategory}`, 14, 27);
+    doc.text(`Periodo: ${getPeriodLabel(filter)}`, 14, 22);
+    doc.text(`Categoria: ${selectedCategory}`, 14, 27);
     doc.text(`Generado: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 14, 32);
 
     autoTable(doc, {
       startY: 38,
-      head: [["Fecha", "Tipo", "Categoría", "Método", "Monto", "Notas"]],
+      head: [["Fecha", "Tipo", "Categoria", "Metodo", "Monto", "Notas"]],
       body: visibleTransactions.map((tx) => [
         formatAccountingDateTime(tx),
         tx.type,
@@ -475,9 +295,36 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHero
+        eyebrow="Analitica"
         title="Reportes financieros"
-        description="Entiende tus patrones y toma mejores decisiones."
+        description={`Lee tendencias de ${range.label.toLowerCase()}, compara resultados y exporta reportes listos para compartir.`}
+        stats={[
+          {
+            label: "Balance",
+            value: `S/ ${totals.balance.toFixed(2)}`,
+            tone: totals.balance >= 0 ? "success" : "danger",
+          },
+          {
+            label: "Gastos",
+            value: `S/ ${totals.gastos.toFixed(2)}`,
+            tone: "danger",
+          },
+          {
+            label: "Ticket gasto",
+            value: `S/ ${averageTicket.expenseAvg.toFixed(2)}`,
+            tone: "warning",
+          },
+          {
+            label: "Salud",
+            value: health.label,
+            tone: health.color.includes("green")
+              ? "success"
+              : health.color.includes("red")
+              ? "danger"
+              : "warning",
+          },
+        ]}
       />
 
       <SectionPanel className="space-y-4">
@@ -489,8 +336,8 @@ export default function Reports() {
               onClick={() => setFilter(item.value)}
               className={`px-3 py-1.5 rounded-full text-sm transition ${
                 filter === item.value
-                  ? "bg-[#0a2b6e] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white shadow-sm"
+                  : "bg-[#eff8ff] text-[#0a2b6e] hover:bg-[#e3f2ff]"
               }`}
             >
               {item.label}
@@ -498,11 +345,11 @@ export default function Reports() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="border rounded-xl px-3 py-2 text-sm"
+            className="rounded-xl border border-[#dbe8ff] bg-white px-3 py-2 text-sm text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           >
             {PERIODS.map((item) => (
               <option key={item.value} value={item.value}>
@@ -514,7 +361,7 @@ export default function Reports() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="border rounded-xl px-3 py-2 text-sm"
+            className="rounded-xl border border-[#dbe8ff] bg-white px-3 py-2 text-sm text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           >
             {categories.map((category) => (
               <option key={category} value={category}>
@@ -523,31 +370,19 @@ export default function Reports() {
             ))}
           </select>
 
-          <div className="flex gap-2 justify-start md:justify-end">
-            <button
-              onClick={exportToPDF}
-              className="flex items-center gap-2 bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm font-medium"
-            >
+          <div className="flex justify-start gap-2 md:justify-end">
+            <Button onClick={exportToPDF} variant="outline" size="sm">
               <FileDown size={16} /> PDF
-            </button>
-            <button
-              onClick={exportToCSV}
-              className="flex items-center gap-2 bg-emerald-500 text-white px-3 py-2 rounded-lg hover:bg-emerald-600 text-sm font-medium"
-            >
+            </Button>
+            <Button onClick={exportToCSV} variant="outline" size="sm">
               <FileText size={16} /> CSV
-            </button>
-            <button
-              onClick={exportToExcel}
-              className="flex items-center gap-2 bg-[#0a2b6e] text-white px-3 py-2 rounded-lg hover:bg-[#081f52] text-sm font-medium"
-            >
+            </Button>
+            <Button onClick={exportToExcel} variant="outline" size="sm">
               <FileSpreadsheet size={16} /> Excel
-            </button>
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-[#1f67ff] text-white px-3 py-2 rounded-lg hover:bg-[#0a2b6e] text-sm font-medium"
-            >
+            </Button>
+            <Button onClick={() => setShowModal(true)} variant="brand" size="sm">
               <Eye size={16} /> Detalle
-            </button>
+            </Button>
           </div>
         </div>
       </SectionPanel>
@@ -555,46 +390,55 @@ export default function Reports() {
       {visibleTransactions.length === 0 ? (
         <EmptyState
           title="No hay movimientos para este reporte."
-          description="Prueba otro periodo, cambia la categoría o registra movimientos para generar métricas útiles."
+          description="Prueba otro periodo, cambia la categoria o registra movimientos para generar metricas utiles."
           action={
             <div className="flex flex-wrap justify-center gap-2">
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-            >
-              Limpiar filtros
-            </button>
-            <Link
-              to="/transactions"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0a2b6e] text-white hover:bg-[#081f52]"
-            >
-              <PlusCircle size={16} /> Agregar transacción
-            </Link>
+              <Button type="button" onClick={resetFilters} variant="soft">
+                Limpiar filtros
+              </Button>
+              <Link
+                to="/transactions"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1f67ff] to-[#11c69a] px-4 py-2 font-semibold text-white shadow-[0_10px_24px_rgba(31,103,255,0.2)] transition hover:-translate-y-0.5"
+              >
+                <PlusCircle size={16} /> Agregar transaccion
+              </Link>
             </div>
           }
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <UiMetricCard title="Ingresos" value={`S/ ${totals.ingresos.toFixed(2)}`} color="green" />
             <UiMetricCard title="Gastos" value={`S/ ${totals.gastos.toFixed(2)}`} color="red" />
-            <UiMetricCard title="Balance" value={`S/ ${totals.balance.toFixed(2)}`} color={totals.balance >= 0 ? "green" : "red"} />
-            <UiMetricCard title="Ticket ingreso" value={`S/ ${averageTicket.incomeAvg.toFixed(2)}`} color="blue" />
-            <UiMetricCard title="Ticket gasto" value={`S/ ${averageTicket.expenseAvg.toFixed(2)}`} color="amber" />
+            <UiMetricCard
+              title="Balance"
+              value={`S/ ${totals.balance.toFixed(2)}`}
+              color={totals.balance >= 0 ? "green" : "red"}
+            />
+            <UiMetricCard
+              title="Ticket ingreso"
+              value={`S/ ${averageTicket.incomeAvg.toFixed(2)}`}
+              color="blue"
+            />
+            <UiMetricCard
+              title="Ticket gasto"
+              value={`S/ ${averageTicket.expenseAvg.toFixed(2)}`}
+              color="amber"
+            />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <SectionPanel title="Comparación vs periodo anterior" className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <SectionPanel title="Comparacion vs periodo anterior" className="space-y-2">
               {previousTransactions.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  Aún no hay datos del periodo anterior para comparar. Cuando tengas más historial,
-                  NexoFin mostrará la diferencia automáticamente.
+                  Aun no hay datos del periodo anterior para comparar. Cuando tengas mas historial,
+                  NexoFin mostrara la diferencia automaticamente.
                 </p>
               ) : (
                 <>
                   <p className="text-sm text-gray-600">
-                    Balance: <span className={comparison.diffBalance >= 0 ? "text-green-600" : "text-red-600"}>
+                    Balance:{" "}
+                    <span className={comparison.diffBalance >= 0 ? "text-green-600" : "text-red-600"}>
                       {comparison.diffBalance >= 0 ? "+" : ""}S/ {comparison.diffBalance.toFixed(2)}
                     </span>
                   </p>
@@ -607,7 +451,7 @@ export default function Reports() {
                   <p className="text-sm text-gray-500">
                     {comparison.pctBalance === null
                       ? "Sin porcentaje comparable."
-                      : `Variación de balance: ${comparison.pctBalance.toFixed(1)}%`}
+                      : `Variacion de balance: ${comparison.pctBalance.toFixed(1)}%`}
                   </p>
                 </>
               )}
@@ -617,7 +461,7 @@ export default function Reports() {
               <p className={`text-lg font-bold ${health.color}`}>{health.label}</p>
               <p className="text-sm text-gray-600">{health.description}</p>
               {insights.length > 0 && (
-                <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">
                   {insights.map((insight) => (
                     <li key={insight}>{insight}</li>
                   ))}
@@ -626,9 +470,8 @@ export default function Reports() {
             </SectionPanel>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-              <h3 className="text-md font-semibold mb-3">Periodo actual: ingresos vs gastos</h3>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <SectionPanel title="Periodo actual: ingresos vs gastos" className="p-4">
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={periodBarData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -640,10 +483,9 @@ export default function Reports() {
                   <Bar dataKey="gastos" fill="#f87171" name="Gastos" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </SectionPanel>
 
-            <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-              <h3 className="text-md font-semibold mb-3">Tendencia últimos 6 meses</h3>
+            <SectionPanel title="Tendencia ultimos 6 meses" className="p-4">
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -655,12 +497,12 @@ export default function Reports() {
                   <Line type="monotone" dataKey="gastos" stroke="#ef4444" strokeWidth={3} name="Gastos" />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </SectionPanel>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-              <h3 className="font-semibold mb-3">Top categorías de gasto</h3>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="rounded-2xl border border-[#e4edff] bg-white p-4 shadow">
+              <h3 className="mb-3 font-semibold">Top categorias de gasto</h3>
               {topExpenseCategories.length === 0 ? (
                 <p className="text-sm text-gray-500">No hay gastos en este periodo.</p>
               ) : (
@@ -677,8 +519,8 @@ export default function Reports() {
               )}
             </div>
 
-            <div className="bg-white border border-[#e4edff] rounded-2xl shadow p-4">
-              <h3 className="font-semibold mb-3">Gasto por método de pago</h3>
+            <div className="rounded-2xl border border-[#e4edff] bg-white p-4 shadow">
+              <h3 className="mb-3 font-semibold">Gasto por metodo de pago</h3>
               {methodsBreakdown.length === 0 ? (
                 <p className="text-sm text-gray-500">No hay gastos en este periodo.</p>
               ) : (
@@ -697,49 +539,43 @@ export default function Reports() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h2 className="text-lg sm:text-xl font-semibold">Detalle de transacciones</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+          <div className="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-4 shadow-lg sm:p-6">
+            <div className="mb-4 flex items-center justify-between border-b pb-2">
+              <h2 className="text-lg font-semibold sm:text-xl">Detalle de transacciones</h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-800 transition"
+                className="text-gray-500 transition hover:text-gray-800"
               >
                 <X size={22} />
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-3 mb-4 justify-center sm:justify-end">
-              <button
-                onClick={exportToPDF}
-                className="flex items-center gap-2 bg-red-500 text-white px-3 py-2 rounded-xl hover:bg-red-600 text-sm"
-              >
+            <div className="mb-4 flex flex-wrap justify-center gap-3 sm:justify-end">
+              <Button onClick={exportToPDF} variant="outline" size="sm">
                 <FileDown size={16} /> PDF
-              </button>
-              <button
-                onClick={exportToCSV}
-                className="flex items-center gap-2 bg-emerald-500 text-white px-3 py-2 rounded-xl hover:bg-emerald-600 text-sm"
-              >
+              </Button>
+              <Button onClick={exportToCSV} variant="outline" size="sm">
                 <FileText size={16} /> CSV
-              </button>
+              </Button>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm border-collapse">
+              <table className="min-w-full border-collapse text-sm">
                 <thead>
                   <tr className="bg-gray-100 text-left">
                     <th className="p-2">Fecha</th>
                     <th className="p-2">Tipo</th>
-                    <th className="p-2">Categoría</th>
-                    <th className="p-2">Método</th>
+                    <th className="p-2">Categoria</th>
+                    <th className="p-2">Metodo</th>
                     <th className="p-2">Monto</th>
                     <th className="p-2">Notas</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleTransactions.map((tx) => (
-                    <tr key={tx.id} className="border-t hover:bg-gray-50 transition">
-                      <td className="p-2 whitespace-nowrap">{formatAccountingDateTime(tx)}</td>
+                    <tr key={tx.id} className="border-t transition hover:bg-gray-50">
+                      <td className="whitespace-nowrap p-2">{formatAccountingDateTime(tx)}</td>
                       <td
                         className={`p-2 font-medium ${
                           tx.type === "Ingreso" ? "text-green-600" : "text-red-600"
@@ -750,20 +586,17 @@ export default function Reports() {
                       <td className="p-2">{tx.category}</td>
                       <td className="p-2">{tx.account}</td>
                       <td className="p-2">S/ {tx.amount.toFixed(2)}</td>
-                      <td className="p-2 text-gray-500 max-w-[160px] truncate">{tx.notes || "-"}</td>
+                      <td className="max-w-[160px] truncate p-2 text-gray-500">{tx.notes || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowModal(false)}
-                className="bg-[#0a2b6e] text-white px-5 py-2 rounded-xl hover:bg-[#081f52] transition"
-              >
+            <div className="mt-6 flex justify-end">
+              <Button onClick={() => setShowModal(false)} variant="outline">
                 Cerrar
-              </button>
+              </Button>
             </div>
           </div>
         </div>

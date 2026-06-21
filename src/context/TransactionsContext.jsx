@@ -1,27 +1,17 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  deleteDoc,
-  updateDoc,
-  doc,
-  query,
-  where,
-} from "firebase/firestore";
-import { db } from "../firebase/config";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { logError } from "../services/logger";
 import { useAuth } from "./AuthContext";
 import { AppContext } from "./AppContext";
-import {
-  normalizeIsoDate,
-  normalizeOptionalText,
-  normalizePositiveAmount,
-  normalizeText,
-  normalizeType,
-} from "../utils/validation";
 import { buildBudgetAlertNotification } from "../utils/budgetNotifications";
 import { formatCurrency, getMonthKey } from "../utils/formatters";
+import {
+  createTransactionDoc,
+  deleteTransactionDoc,
+  sanitizeTransactionInput,
+  subscribeToTransactions,
+  updateTransactionDoc,
+} from "../services/transactionService";
 
 export const TransactionsContext = createContext();
 
@@ -73,81 +63,61 @@ export function TransactionsProvider({ children }) {
       return;
     }
 
-    const q = query(collection(db, "transactions"), where("uid", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-      setTransactions(data);
+    const unsubscribe = subscribeToTransactions(user.uid, {
+      onData: (data) => {
+        setTransactions(data);
+      },
+      onError: (error) => {
+        logError("Error al cargar transacciones", error, {
+          source: "transactions.listener",
+        });
+        setTransactions([]);
+        toast.error("No se pudieron cargar las transacciones");
+      },
     });
 
     return () => unsubscribe();
   }, [user?.uid]);
 
-  const sanitizeTransaction = (data) => {
-    const { id: _id, ...rest } = data;
-    const now = new Date();
-    const fixedDate = normalizeIsoDate(rest.date, now);
-    const fixedCreatedAt = normalizeIsoDate(rest.createdAt, now);
-    const amount = normalizePositiveAmount(rest.amount);
-    const category = normalizeText(
-      typeof rest.category === "object" ? rest.category?.name : rest.category,
-      80
-    );
-    const account = normalizeText(
-      typeof rest.account === "object" ? rest.account?.name : rest.account,
-      80
-    );
-    const notes = normalizeOptionalText(rest.notes, 500);
-    const type = normalizeType(rest.type);
+  const sanitizeTransaction = useCallback(
+    (data) => sanitizeTransactionInput(data, user?.uid),
+    [user?.uid]
+  );
 
-    if (!category || !account || amount <= 0) {
-      return null;
-    }
-
-    return {
-      uid: user?.uid,
-      category,
-      account,
-      amount,
-      date: fixedDate,
-      createdAt: fixedCreatedAt,
-      type,
-      notes,
-    };
-  };
-
-  const addTransaction = async (transaction) => {
+  const addTransaction = useCallback(async (transaction) => {
     if (!user?.uid) {
-      toast.error("Debes iniciar sesión");
+      toast.error("Debes iniciar sesion");
       return null;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Guardando transacción...");
+    const toastId = toast.loading("Guardando transaccion...");
 
     try {
       const cleanData = sanitizeTransaction(transaction);
       if (!cleanData) {
-        toast.error("Datos inválidos en la transacción");
+        toast.error("Datos invalidos en la transaccion");
         return null;
       }
-      const docRef = await addDoc(collection(db, "transactions"), cleanData);
-      const monthKey = getMonthKey(cleanData.date);
 
+      const transactionId = await createTransactionDoc(cleanData);
+      const monthKey = getMonthKey(cleanData.date);
       const unusualSignal = getUnusualExpenseSignal(cleanData, transactions);
+      const followUpTasks = [];
+
       if (unusualSignal) {
-        await createNotification({
-          type: "unusual_expense",
-          title: `Gasto inusual: ${cleanData.category}`,
-          message: `Este gasto fue ${formatCurrency(unusualSignal.increaseAmount)} mayor que tu promedio en esta categoría.`,
-          recommendation: `Revisa si este gasto de ${cleanData.category} fue puntual. Si se repetirá, considera ajustar tu meta o recortar otros gastos del mes.`,
-          actionPath: `/transactions?category=${encodeURIComponent(cleanData.category)}`,
-          severity: "warning",
-          sourceKey: `unusual-transaction-${monthKey}-${cleanData.category}-${docRef.id}`,
-          monthKey,
-        });
+        followUpTasks.push(
+          createNotification({
+            type: "unusual_expense",
+            title: `Gasto inusual: ${cleanData.category}`,
+            message: `Este gasto fue ${formatCurrency(unusualSignal.increaseAmount)} mayor que tu promedio en esta categoria.`,
+            recommendation: `Revisa si este gasto de ${cleanData.category} fue puntual. Si se repetira, considera ajustar tu meta o recortar otros gastos del mes.`,
+            actionPath: `/transactions?category=${encodeURIComponent(cleanData.category)}`,
+            severity: "warning",
+            sourceKey: `unusual-transaction-${monthKey}-${cleanData.category}-${transactionId}`,
+            monthKey,
+          })
+        );
       }
 
       if (!isIncomeTransaction(cleanData)) {
@@ -172,88 +142,106 @@ export function TransactionsProvider({ children }) {
           });
 
           if (budgetNotification) {
-            await createNotification(budgetNotification);
+            followUpTasks.push(createNotification(budgetNotification));
           }
         }
       }
 
-      toast.success("Transacción añadida correctamente", { id: toastId });
-      return docRef.id;
+      if (followUpTasks.length > 0) {
+        Promise.allSettled(followUpTasks).then((results) => {
+          results.forEach((result) => {
+            if (result.status === "rejected") {
+              logError("Error al crear notificacion derivada", result.reason, {
+                source: "transactions.add-follow-up-notification",
+              });
+            }
+          });
+        });
+      }
+
+      toast.success("Transaccion anadida correctamente", { id: toastId });
+      return transactionId;
     } catch (error) {
-      console.error("Error al agregar transacción:", error);
-      toast.error("Error al agregar transacción", { id: toastId });
+      logError("Error al agregar transaccion", error, { source: "transactions.add" });
+      toast.error("Error al agregar transaccion", { id: toastId });
       return null;
     } finally {
       setLoading(false);
     }
-  };
+  }, [budgets, createNotification, notificationSettings, sanitizeTransaction, transactions, user?.uid]);
 
-  const updateTransaction = async (transaction) => {
+  const updateTransaction = useCallback(async (transaction) => {
     const id = transaction?.id;
     if (!user?.uid) {
-      toast.error("Debes iniciar sesión");
+      toast.error("Debes iniciar sesion");
       return false;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Actualizando transacción...");
+    const toastId = toast.loading("Actualizando transaccion...");
 
     try {
       if (!id || typeof id !== "string") {
-        throw new Error("ID inválido al actualizar transacción");
+        throw new Error("ID invalido al actualizar transaccion");
       }
 
       const cleanData = sanitizeTransaction(transaction);
       if (!cleanData) {
-        throw new Error("Datos inválidos en la transacción");
+        throw new Error("Datos invalidos en la transaccion");
       }
-      await updateDoc(doc(db, "transactions", id), cleanData);
 
-      toast.success("Transacción actualizada correctamente", { id: toastId });
+      await updateTransactionDoc(id, cleanData);
+      toast.success("Transaccion actualizada correctamente", { id: toastId });
       return true;
     } catch (error) {
-      console.error("Error al actualizar transacción:", error);
-      toast.error("Error al actualizar transacción", { id: toastId });
+      logError("Error al actualizar transaccion", error, { source: "transactions.update" });
+      toast.error("Error al actualizar transaccion", { id: toastId });
       return false;
     } finally {
       setLoading(false);
     }
-  };
+  }, [sanitizeTransaction, user?.uid]);
 
-  const deleteTransaction = async (id) => {
+  const deleteTransaction = useCallback(async (id) => {
     if (!user?.uid) {
-      toast.error("Debes iniciar sesión");
+      toast.error("Debes iniciar sesion");
       return;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Eliminando transacción...");
-    try {
-      if (!id || typeof id !== "string") throw new Error("ID inválido");
+    const toastId = toast.loading("Eliminando transaccion...");
 
-      await deleteDoc(doc(db, "transactions", id));
-      toast.success("Transacción eliminada correctamente", { id: toastId });
+    try {
+      if (!id || typeof id !== "string") {
+        throw new Error("ID invalido");
+      }
+
+      await deleteTransactionDoc(id);
+      toast.success("Transaccion eliminada correctamente", { id: toastId });
     } catch (error) {
-      console.error("Error al eliminar transacción:", error);
-      toast.error("No se pudo eliminar la transacción", { id: toastId });
+      logError("Error al eliminar transaccion", error, { source: "transactions.delete" });
+      toast.error("No se pudo eliminar la transaccion", { id: toastId });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.uid]);
+
+  const value = useMemo(
+    () => ({
+      transactions,
+      addTransaction,
+      deleteTransaction,
+      updateTransaction,
+      loading,
+    }),
+    [addTransaction, deleteTransaction, loading, transactions, updateTransaction]
+  );
 
   return (
-    <TransactionsContext.Provider
-      value={{
-        transactions,
-        addTransaction,
-        deleteTransaction,
-        updateTransaction,
-        loading,
-      }}
-    >
+    <TransactionsContext.Provider value={value}>
       {loading && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[9999]">
-          <div className="w-14 h-14 border-4 border-white border-t-[#1f67ff] rounded-full animate-spin"></div>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30">
+          <div className="h-14 w-14 animate-spin rounded-full border-4 border-white border-t-[#1f67ff]" />
         </div>
       )}
       {children}
@@ -264,4 +252,3 @@ export function TransactionsProvider({ children }) {
 export function useTransactions() {
   return useContext(TransactionsContext);
 }
-

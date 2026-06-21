@@ -1,4 +1,46 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function loadEnvFile(relativePath) {
+  const absolutePath = path.join(__dirname, relativePath);
+  if (!fs.existsSync(absolutePath)) {
+    return;
+  }
+
+  const lines = fs.readFileSync(absolutePath, "utf8").split(/\r?\n/);
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      return;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+    if (separatorIndex <= 0) {
+      return;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const unquotedValue =
+      (rawValue.startsWith('"') && rawValue.endsWith('"')) ||
+      (rawValue.startsWith("'") && rawValue.endsWith("'"))
+        ? rawValue.slice(1, -1)
+        : rawValue;
+
+    if (process.env[key] === undefined) {
+      process.env[key] = unquotedValue;
+    }
+  });
+}
+
+loadEnvFile(".env");
+loadEnvFile(".env.local");
 
 export default defineConfig({
   testDir: "./tests/e2e",

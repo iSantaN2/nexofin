@@ -20,14 +20,11 @@ export default defineConfig({
               return "vendor-firebase-analytics";
             }
             if (id.includes("@firebase") || id.includes("firebase/")) return "vendor-firebase-core";
-            if (id.includes("recharts")) return "vendor-charts";
-            if (id.includes("d3-")) return "vendor-d3";
-            if (id.includes("xlsx")) return "vendor-excel";
             if (id.includes("jspdf") || id.includes("html2canvas")) return "vendor-pdf";
             if (id.includes("react") || id.includes("react-dom") || id.includes("react-router-dom")) {
               return "vendor-react";
             }
-            return "vendor-misc";
+            return undefined;
           }
           return null;
         },

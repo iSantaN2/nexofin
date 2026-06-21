@@ -4,13 +4,14 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 import Button from "../components/ui/Button";
+import { logError } from "../services/logger";
 
 function getVerificationErrorMessage(error) {
   switch (error?.code) {
     case "auth/too-many-requests":
-      return "Demasiados intentos. Espera unos minutos e inténtalo otra vez.";
+      return "Demasiados intentos. Espera unos minutos e intentalo otra vez.";
     default:
-      return "No se pudo completar la acción. Inténtalo nuevamente.";
+      return "No se pudo completar la accion. Intentalo nuevamente.";
   }
 }
 
@@ -32,9 +33,11 @@ export default function VerifyEmail() {
     setSending(true);
     try {
       await resendVerificationEmail();
-      toast.success("Te enviamos otro correo de verificación");
+      toast.success("Te enviamos otro correo de verificacion");
     } catch (error) {
-      console.error(error);
+      logError("No se pudo reenviar el correo de verificacion", error, {
+        source: "auth.verify-email-resend",
+      });
       toast.error(getVerificationErrorMessage(error));
     } finally {
       setSending(false);
@@ -49,10 +52,12 @@ export default function VerifyEmail() {
         toast.success("Correo verificado. Bienvenido.");
         navigate("/", { replace: true });
       } else {
-        toast.error("Tu correo aún no está verificado");
+        toast.error("Tu correo aun no esta verificado");
       }
     } catch (error) {
-      console.error(error);
+      logError("No se pudo validar el estado del correo", error, {
+        source: "auth.verify-email-refresh",
+      });
       toast.error(getVerificationErrorMessage(error));
     } finally {
       setChecking(false);
@@ -64,8 +69,10 @@ export default function VerifyEmail() {
       await logout();
       navigate("/login", { replace: true });
     } catch (error) {
-      console.error(error);
-      toast.error("No se pudo cerrar sesión");
+      logError("No se pudo cerrar sesion desde verify email", error, {
+        source: "auth.verify-email-logout",
+      });
+      toast.error("No se pudo cerrar sesion");
     }
   };
 
@@ -76,43 +83,44 @@ export default function VerifyEmail() {
     >
       <div className="rounded-2xl border border-[#d9e6ff] bg-[#f8fbff] p-4">
         <p className="text-sm text-gray-600">
-          Enviamos un enlace de verificación a <span className="font-semibold text-[#0a2b6e]">{email}</span>.
+          Enviamos un enlace de verificacion a{" "}
+          <span className="font-semibold text-[#0a2b6e]">{email}</span>.
         </p>
         <p className="mt-2 text-sm text-gray-500">
-          Abre ese correo, confirma tu cuenta y luego presiona "Ya verifiqué mi correo".
+          Abre ese correo, confirma tu cuenta y luego presiona "Ya verifique mi correo".
         </p>
       </div>
 
-        <div className="space-y-2">
-          <Button
-            type="button"
-            onClick={handleCheckStatus}
-            disabled={checking}
-            variant="brand"
-            className="w-full"
-          >
-            {checking ? "Validando..." : "Ya verifiqué mi correo"}
-          </Button>
+      <div className="space-y-2">
+        <Button
+          type="button"
+          onClick={handleCheckStatus}
+          disabled={checking}
+          variant="brand"
+          className="w-full"
+        >
+          {checking ? "Validando..." : "Ya verifique mi correo"}
+        </Button>
 
-          <Button
-            type="button"
-            onClick={handleResend}
-            disabled={sending}
-            variant="soft"
-            className="w-full"
-          >
-            {sending ? "Enviando..." : "Reenviar correo de verificación"}
-          </Button>
+        <Button
+          type="button"
+          onClick={handleResend}
+          disabled={sending}
+          variant="soft"
+          className="w-full"
+        >
+          {sending ? "Enviando..." : "Reenviar correo de verificacion"}
+        </Button>
 
-          <Button
-            type="button"
-            onClick={handleLogout}
-            variant="neutral"
-            className="w-full"
-          >
-            Cerrar sesión
-          </Button>
-        </div>
+        <Button
+          type="button"
+          onClick={handleLogout}
+          variant="neutral"
+          className="w-full"
+        >
+          Cerrar sesion
+        </Button>
+      </div>
     </AuthShell>
   );
 }

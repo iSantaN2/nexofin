@@ -1,5 +1,24 @@
+export function getTransactionType(value) {
+  const rawType = typeof value === "object" ? value?.type : value;
+  return rawType === "Ingreso" || rawType === "income" ? "Ingreso" : "Gasto";
+}
+
 export function isIncomeTransaction(transaction) {
-  return transaction?.type === "Ingreso" || transaction?.type === "income";
+  return getTransactionType(transaction) === "Ingreso";
+}
+
+export function normalizeTransactionField(value, fallback) {
+  if (!value) return fallback;
+  if (typeof value === "object") return value.name || fallback;
+  return value;
+}
+
+export function normalizeComparableText(value = "") {
+  return String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 }
 
 export function matchesTypeFilter(transaction, filter) {

@@ -4,11 +4,11 @@ export function isIncomeTransaction(type) {
   return type === "Ingreso" || type === "income";
 }
 
-export function toTransactionDate(value) {
+function toTransactionDate(value) {
   return toDate(value);
 }
 
-export function normalizeSearchText(text = "") {
+function normalizeSearchText(text = "") {
   return String(text)
     .toLowerCase()
     .normalize("NFD")

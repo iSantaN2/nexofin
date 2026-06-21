@@ -1,8 +1,9 @@
+const brandVariant =
+  "bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white shadow-[0_10px_24px_rgba(31,103,255,0.2)] hover:-translate-y-0.5";
+
 const variants = {
-  primary:
-    "bg-[#0a2b6e] text-white shadow-[0_10px_24px_rgba(10,43,110,0.18)] hover:bg-[#081f52] hover:-translate-y-0.5",
-  brand:
-    "bg-gradient-to-r from-[#1f67ff] to-[#11c69a] text-white shadow-[0_10px_24px_rgba(31,103,255,0.2)] hover:-translate-y-0.5",
+  primary: brandVariant,
+  brand: brandVariant,
   success:
     "bg-emerald-600 text-white shadow-[0_10px_24px_rgba(5,150,105,0.16)] hover:bg-emerald-700 hover:-translate-y-0.5",
   danger:

@@ -1,29 +1,34 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useCategories } from "../context/CategoriesContext";
-import { usePaymentMethods } from "../context/PaymentMethodsContext";
+import React, { useCallback, useEffect, useId, useState } from "react";
 import toast from "react-hot-toast";
 import { Plus, X } from "lucide-react";
+import { useCategories } from "../context/CategoriesContext";
+import { usePaymentMethods } from "../context/PaymentMethodsContext";
+import { logError } from "../services/logger";
 import Button from "./ui/Button";
 
-export default function AddTransactionModal({
-  show,
-  onClose,
-  onAdd,
-  initialData = null,
-}) {
+export default function AddTransactionModal({ show, onClose, onAdd, initialData = null }) {
   const [type, setType] = useState("expense");
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [account, setAccount] = useState("Efectivo");
   const [notes, setNotes] = useState("");
-
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
 
   const { categories, addCategory } = useCategories();
   const { methods } = usePaymentMethods();
+  const modalTitleId = useId();
+  const modalDescriptionId = useId();
+  const categoryTitleId = useId();
+  const categoryDescriptionId = useId();
+  const categoryFieldId = useId();
+  const amountFieldId = useId();
+  const dateFieldId = useId();
+  const accountFieldId = useId();
+  const notesFieldId = useId();
+  const newCategoryFieldId = useId();
 
   const toLocalDateInputValue = (value) => {
     if (!value) return "";
@@ -67,23 +72,19 @@ export default function AddTransactionModal({
 
   if (!show) return null;
 
-  const handleOpenAddCategory = () => {
-    setShowCategoryModal(true);
-  };
-
   const handleConfirmAddCategory = async () => {
     const trimmed = newCategoryName.trim();
     if (!trimmed) return;
 
     const normalizedType = type === "income" ? "ingreso" : "gasto";
     const exists = categories.some(
-      (c) =>
-        c.name.toLowerCase() === trimmed.toLowerCase() &&
-        c.type?.toLowerCase() === normalizedType
+      (item) =>
+        item.name.toLowerCase() === trimmed.toLowerCase() &&
+        item.type?.toLowerCase() === normalizedType
     );
 
     if (exists) {
-      toast.error(`La categoría "${trimmed}" ya existe en ${normalizedType}.`);
+      toast.error(`La categoria "${trimmed}" ya existe en ${normalizedType}.`);
       return;
     }
 
@@ -91,24 +92,25 @@ export default function AddTransactionModal({
       setAddingCategory(true);
       await addCategory(trimmed, normalizedType);
       setCategory(trimmed);
-      toast.success(`Categoría "${trimmed}" añadida correctamente.`);
+      toast.success(`Categoria "${trimmed}" anadida correctamente.`);
       closeCategoryModal();
     } catch (error) {
-      console.error("Error al añadir categoría:", error);
-      toast.error("No se pudo añadir la categoría");
+      logError("Error al anadir categoria", error, { source: "transactions.add-category" });
+      toast.error("No se pudo anadir la categoria");
     } finally {
       setAddingCategory(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     const parsedAmount = Number(amount);
 
     if (!category || amount === "") {
-      toast.error("Completa la categoría y el monto");
+      toast.error("Completa la categoria y el monto");
       return;
     }
+
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       toast.error("El monto debe ser mayor a 0");
       return;
@@ -156,15 +158,15 @@ export default function AddTransactionModal({
       resetForm();
       onClose();
     } catch (error) {
-      console.error("Error al guardar transacción:", error);
-      toast.error("Error al guardar transacción");
+      logError("Error al guardar transaccion", error, { source: "transactions.save-modal" });
+      toast.error("Error al guardar transaccion");
     }
   };
 
-  const filteredCategories = categories.filter((cat) =>
+  const filteredCategories = categories.filter((item) =>
     type === "income"
-      ? cat.type?.toLowerCase() === "ingreso"
-      : cat.type?.toLowerCase() === "gasto"
+      ? item.type?.toLowerCase() === "ingreso"
+      : item.type?.toLowerCase() === "gasto"
   );
 
   const inputClass =
@@ -173,15 +175,21 @@ export default function AddTransactionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="relative flex max-h-[94vh] w-full max-w-lg animate-fadeIn flex-col overflow-hidden rounded-t-[2rem] border border-[#dbe8ff] bg-white shadow-[0_28px_70px_rgba(10,43,110,0.22)] sm:max-h-[90vh] sm:rounded-[1.75rem]">
+      <div
+        className="relative flex max-h-[94vh] w-full max-w-lg animate-fadeIn flex-col overflow-hidden rounded-t-[2rem] border border-[#dbe8ff] bg-white shadow-[0_28px_70px_rgba(10,43,110,0.22)] sm:max-h-[90vh] sm:rounded-[1.75rem]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={modalTitleId}
+        aria-describedby={modalDescriptionId}
+      >
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
         <div className="flex items-start justify-between gap-3 border-b border-[#edf3ff] px-5 py-4 sm:px-6">
           <div>
-            <h3 className="text-lg font-semibold text-[#0a2b6e]">
-              {initialData ? "Editar transacción" : "Añadir transacción"}
+            <h3 id={modalTitleId} className="text-lg font-semibold text-[#0a2b6e]">
+              {initialData ? "Editar transaccion" : "Anadir transaccion"}
             </h3>
-            <p className="text-sm text-slate-500">
-              {initialData ? "Actualiza los datos del movimiento." : "Registra un ingreso o gasto del día."}
+            <p id={modalDescriptionId} className="text-sm text-slate-500">
+              {initialData ? "Actualiza los datos del movimiento." : "Registra un ingreso o gasto del dia."}
             </p>
           </div>
           <button
@@ -204,9 +212,7 @@ export default function AddTransactionModal({
               type="button"
               onClick={() => setType("expense")}
               className={`min-h-11 rounded-xl text-sm font-semibold transition ${
-                type === "expense"
-                  ? "bg-white text-red-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
+                type === "expense" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               Gasto
@@ -215,9 +221,7 @@ export default function AddTransactionModal({
               type="button"
               onClick={() => setType("income")}
               className={`min-h-11 rounded-xl text-sm font-semibold transition ${
-                type === "income"
-                  ? "bg-white text-emerald-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
+                type === "income" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               Ingreso
@@ -225,27 +229,30 @@ export default function AddTransactionModal({
           </div>
 
           <div>
-            <label className={labelClass}>Categoría</label>
-            <div className="flex gap-2 items-center">
+            <label htmlFor={categoryFieldId} className={labelClass}>
+              Categoria
+            </label>
+            <div className="flex items-center gap-2">
               <select
+                id={categoryFieldId}
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(event) => setCategory(event.target.value)}
                 className={inputClass}
                 required
               >
-                <option value="">Selecciona una categoría</option>
-                {filteredCategories.map((cat) => (
-                  <option key={cat.id || cat.name} value={cat.name}>
-                    {cat.name}
+                <option value="">Selecciona una categoria</option>
+                {filteredCategories.map((item) => (
+                  <option key={item.id || item.name} value={item.name}>
+                    {item.name}
                   </option>
                 ))}
               </select>
               <button
                 type="button"
-                onClick={handleOpenAddCategory}
+                onClick={() => setShowCategoryModal(true)}
                 className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1f67ff] to-[#11c69a] text-white shadow-[0_12px_24px_rgba(31,103,255,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(31,103,255,0.28)]"
-                title="Nueva categoría"
-                aria-label="Nueva categoría"
+                title="Nueva categoria"
+                aria-label="Nueva categoria"
               >
                 <Plus size={18} />
               </button>
@@ -253,12 +260,15 @@ export default function AddTransactionModal({
           </div>
 
           <div>
-            <label className={labelClass}>Monto</label>
+            <label htmlFor={amountFieldId} className={labelClass}>
+              Monto
+            </label>
             <input
+              id={amountFieldId}
               type="number"
               placeholder="Monto"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(event) => setAmount(event.target.value)}
               min="0.01"
               step="0.01"
               className={`${inputClass} text-lg font-semibold`}
@@ -268,25 +278,31 @@ export default function AddTransactionModal({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Fecha</label>
+              <label htmlFor={dateFieldId} className={labelClass}>
+                Fecha
+              </label>
               <input
+                id={dateFieldId}
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(event) => setDate(event.target.value)}
                 className={inputClass}
               />
             </div>
 
             <div>
-              <label className={labelClass}>Método</label>
+              <label htmlFor={accountFieldId} className={labelClass}>
+                Metodo
+              </label>
               <select
+                id={accountFieldId}
                 value={account}
-                onChange={(e) => setAccount(e.target.value)}
+                onChange={(event) => setAccount(event.target.value)}
                 className={inputClass}
               >
-                {methods.map((m) => (
-                  <option key={m.id || m.name} value={m.name}>
-                    {m.name}
+                {methods.map((item) => (
+                  <option key={item.id || item.name} value={item.name}>
+                    {item.name}
                   </option>
                 ))}
               </select>
@@ -294,11 +310,14 @@ export default function AddTransactionModal({
           </div>
 
           <div>
-            <label className={labelClass}>Notas</label>
+            <label htmlFor={notesFieldId} className={labelClass}>
+              Notas
+            </label>
             <textarea
+              id={notesFieldId}
               placeholder="Notas (opcional)"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(event) => setNotes(event.target.value)}
               className={`${inputClass} min-h-24 resize-none`}
               rows={3}
             />
@@ -316,11 +335,7 @@ export default function AddTransactionModal({
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              variant={type === "income" ? "success" : "primary"}
-              className="w-full sm:w-auto"
-            >
+            <Button type="submit" variant={type === "income" ? "success" : "brand"} className="w-full sm:w-auto">
               {initialData ? "Guardar cambios" : "Guardar"}
             </Button>
           </div>
@@ -329,16 +344,28 @@ export default function AddTransactionModal({
 
       {showCategoryModal && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="w-full max-w-sm rounded-t-[2rem] border border-[#dbe8ff] bg-white p-5 shadow-[0_28px_70px_rgba(10,43,110,0.22)] sm:rounded-[1.75rem]">
+          <div
+            className="w-full max-w-sm rounded-t-[2rem] border border-[#dbe8ff] bg-white p-5 shadow-[0_28px_70px_rgba(10,43,110,0.22)] sm:rounded-[1.75rem]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={categoryTitleId}
+            aria-describedby={categoryDescriptionId}
+          >
             <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
-            <h4 className="text-base font-semibold text-[#0a2b6e] mb-1">Nueva categoría</h4>
-            <p className="text-sm text-slate-500 mb-3">
-              Se creará como {type === "income" ? "categoría de ingreso" : "categoría de gasto"}.
+            <h4 id={categoryTitleId} className="mb-1 text-base font-semibold text-[#0a2b6e]">
+              Nueva categoria
+            </h4>
+            <p id={categoryDescriptionId} className="mb-3 text-sm text-slate-500">
+              Se creara como {type === "income" ? "categoria de ingreso" : "categoria de gasto"}.
             </p>
+            <label htmlFor={newCategoryFieldId} className="sr-only">
+              Nombre de categoria
+            </label>
             <input
+              id={newCategoryFieldId}
               type="text"
               value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
+              onChange={(event) => setNewCategoryName(event.target.value)}
               placeholder="Escribe el nombre"
               className={`${inputClass} mb-4`}
               autoFocus
@@ -355,7 +382,7 @@ export default function AddTransactionModal({
               </Button>
               <Button
                 type="button"
-                variant="primary"
+                variant="brand"
                 className="w-full sm:w-auto"
                 onClick={handleConfirmAddCategory}
                 disabled={addingCategory || !newCategoryName.trim()}
@@ -369,4 +396,3 @@ export default function AddTransactionModal({
     </div>
   );
 }
-

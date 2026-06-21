@@ -1,5 +1,5 @@
-import React, { Suspense, lazy, useContext, useState } from "react";
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import React, { Suspense, lazy, useContext, useEffect, useState } from "react";
+import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
   Home,
   List,
@@ -12,11 +12,17 @@ import {
   X,
   LogOut,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoadingState from "./components/ui/LoadingState";
+import Button from "./components/ui/Button";
+import { AppContext, AppProvider } from "./context/AppContext";
+import { CategoriesProvider } from "./context/CategoriesContext";
+import { PaymentMethodsProvider } from "./context/PaymentMethodsContext";
 import { useAuth } from "./context/AuthContext";
-import { AppContext } from "./context/AppContext";
-import toast from "react-hot-toast";
+import { TransactionsProvider } from "./context/TransactionsContext";
+import { logError } from "./services/logger";
+import { getUserAlias, getUserInitial, getUserPhotoUrl } from "./utils/profile";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Transactions = lazy(() => import("./pages/Transactions"));
@@ -94,9 +100,14 @@ function SidebarNavLink({ item, unreadNotificationsCount, onClick }) {
   );
 }
 
-function MobileBottomNav({ unreadNotificationsCount }) {
+function MobileBottomNav({ unreadNotificationsCount, hidden = false }) {
+  if (hidden) return null;
+
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-3xl border border-[#dbe8ff] bg-white/92 p-2 shadow-[0_20px_55px_rgba(10,43,110,0.18)] backdrop-blur-xl md:hidden">
+    <nav
+      className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-3xl border border-[#dbe8ff] bg-white/92 p-2 shadow-[0_20px_55px_rgba(10,43,110,0.18)] backdrop-blur-xl md:hidden"
+      aria-label="Navegacion inferior"
+    >
       {bottomNavItems.map((item) => (
         <NavLink
           key={item.to}
@@ -120,54 +131,89 @@ function MobileBottomNav({ unreadNotificationsCount }) {
 }
 
 function AppShell() {
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const { unreadNotificationsCount } = useContext(AppContext);
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const userInitial = (user?.email || "N").charAt(0).toUpperCase();
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const userAlias = getUserAlias(user, userProfile);
+  const userInitial = getUserInitial(user, userProfile);
+  const userPhotoUrl = getUserPhotoUrl(user, userProfile);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const baseHeight = window.visualViewport?.height || window.innerHeight;
+
+    const updateKeyboardState = () => {
+      const currentHeight = window.visualViewport?.height || window.innerHeight;
+      setKeyboardOpen(baseHeight - currentHeight > 160);
+    };
+
+    updateKeyboardState();
+
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", updateKeyboardState);
+    window.addEventListener("resize", updateKeyboardState);
+
+    return () => {
+      viewport?.removeEventListener("resize", updateKeyboardState);
+      window.removeEventListener("resize", updateKeyboardState);
+    };
+  }, []);
 
   const toggleMenu = () => setMenuOpen((value) => !value);
   const closeMenu = () => setMenuOpen(false);
+  const hideMobileBottomNav = keyboardOpen || menuOpen || location.pathname === "/settings";
 
   const handleLogout = async () => {
     try {
       await logout();
-      toast.success("Sesión cerrada");
+      toast.success("Sesion cerrada");
     } catch (error) {
-      console.error(error);
-      toast.error("No se pudo cerrar sesión");
+      logError("No se pudo cerrar sesion", error, { source: "app.logout" });
+      toast.error("No se pudo cerrar sesion");
     }
   };
 
   return (
-    <div className="flex h-screen bg-[#f8fbff] text-gray-800 relative">
+    <div className="relative flex h-screen bg-[#f8fbff] text-gray-800">
+      <a
+        href="#main-content"
+        className="sr-only z-50 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0a2b6e] shadow focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
+      >
+        Saltar al contenido principal
+      </a>
+
       {menuOpen && (
         <div
-          className="fixed inset-0 bg-slate-950/35 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 z-30 bg-slate-950/35 backdrop-blur-sm transition-opacity duration-300 md:hidden"
           onClick={closeMenu}
         />
       )}
 
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 w-72 bg-white/92 border-r border-[#d9e6ff] shadow-[0_25px_70px_rgba(10,43,110,0.14)] backdrop-blur-xl p-4 flex flex-col transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col border-r border-[#d9e6ff] bg-white/92 p-4 shadow-[0_25px_70px_rgba(10,43,110,0.14)] backdrop-blur-xl transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${
           menuOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0`}
+        }`}
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/nexofin-logo.png" alt="NexoFin" className="w-9 h-9 object-contain" />
+            <img src="/nexofin-logo.png" alt="NexoFin" className="h-9 w-9 object-contain" />
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-[#0a2b6e] to-[#12c59a] bg-clip-text text-transparent">
+              <h1 className="bg-gradient-to-r from-[#0a2b6e] to-[#12c59a] bg-clip-text text-2xl font-bold text-transparent">
                 NexoFin
               </h1>
               <p className="text-xs font-medium text-slate-400">Tu futuro financiero</p>
             </div>
           </div>
           <button
-            className="md:hidden rounded-xl p-2 text-gray-600 hover:bg-[#eff8ff] hover:text-[#0a2b6e]"
+            type="button"
+            className="rounded-xl p-2 text-gray-600 hover:bg-[#eff8ff] hover:text-[#0a2b6e] md:hidden"
             onClick={toggleMenu}
-            aria-label="Cerrar menú"
+            aria-label="Cerrar menu"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
@@ -176,7 +222,7 @@ function AppShell() {
           <p className="mt-1 text-sm text-slate-500">Controla balance, metas y alertas desde una sola vista.</p>
         </div>
 
-        <nav className="flex flex-col space-y-1.5">
+        <nav className="flex flex-col space-y-1.5" aria-label="Navegacion principal">
           {navItems.map((item) => (
             <SidebarNavLink
               key={item.to}
@@ -189,52 +235,65 @@ function AppShell() {
 
         <div className="mt-auto space-y-3 rounded-3xl border border-[#dbe8ff] bg-white/80 p-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0a2b6e] to-[#11c69a] font-bold text-white">
-              {userInitial}
-            </span>
+            {userPhotoUrl ? (
+              <img
+                src={userPhotoUrl}
+                alt={`Foto de ${userAlias}`}
+                className="h-10 w-10 rounded-2xl object-cover shadow-sm"
+              />
+            ) : (
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0a2b6e] to-[#11c69a] font-bold text-white">
+                {userInitial}
+              </span>
+            )}
             <div className="min-w-0">
               <p className="text-xs text-gray-500">Cuenta activa</p>
-              <p className="truncate text-sm font-semibold text-[#061a3d]" title={user?.email || ""}>
-                {user?.email}
+              <p className="truncate text-sm font-semibold text-[#061a3d]" title={userAlias}>
+                {userAlias}
               </p>
+              <p className="truncate text-xs text-slate-500">{user?.email || "-"}</p>
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={handleLogout}
             data-testid="logout-button"
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#0a2b6e] hover:bg-[#081f52] text-white shadow-sm transition"
+            variant="brand"
+            className="w-full rounded-2xl py-2"
           >
-            <LogOut className="w-4 h-4" />
-            Cerrar sesión
-          </button>
-          <div className="text-center text-sm text-gray-500">
-            {new Date().getFullYear()} NexoFin
-          </div>
+            <LogOut className="h-4 w-4" />
+            Cerrar sesion
+          </Button>
+          <div className="text-center text-sm text-gray-500">{new Date().getFullYear()} NexoFin</div>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col md:ml-0">
-        <header className="sticky top-0 z-20 md:hidden flex items-center justify-between bg-white/90 border-b border-[#d9e6ff] shadow-sm p-4 backdrop-blur-xl">
+      <div className="flex flex-1 flex-col md:ml-0">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[#d9e6ff] bg-white/90 p-4 shadow-sm backdrop-blur-xl md:hidden">
           <div className="flex items-center gap-2">
-            <img src="/nexofin-logo.png" alt="NexoFin" className="w-8 h-8 object-contain" />
+            <img src="/nexofin-logo.png" alt="NexoFin" className="h-8 w-8 object-contain" />
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-[#0a2b6e] to-[#12c59a] bg-clip-text text-transparent">
+              <h1 className="bg-gradient-to-r from-[#0a2b6e] to-[#12c59a] bg-clip-text text-xl font-bold text-transparent">
                 NexoFin
               </h1>
               <p className="text-[11px] text-slate-400">Panel financiero</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={toggleMenu}
             className="rounded-2xl border border-[#dbe8ff] bg-white p-2 shadow-sm"
-            aria-label="Abrir menú"
+            aria-label="Abrir menu"
           >
-            <Menu className="w-6 h-6 text-gray-700" />
+            <Menu className="h-6 w-6 text-gray-700" />
           </button>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-transparent px-4 pb-28 pt-4 sm:p-6 md:pb-6">
+        <main
+          id="main-content"
+          className="flex-1 overflow-y-auto bg-transparent px-4 pb-28 pt-4 sm:p-6 md:pb-6"
+          tabIndex={-1}
+        >
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/transactions" element={<Transactions />} />
@@ -246,9 +305,24 @@ function AppShell() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <MobileBottomNav unreadNotificationsCount={unreadNotificationsCount} />
+        <MobileBottomNav
+          unreadNotificationsCount={unreadNotificationsCount}
+          hidden={hideMobileBottomNav}
+        />
       </div>
     </div>
+  );
+}
+
+function PrivateAppProviders({ children }) {
+  return (
+    <AppProvider>
+      <TransactionsProvider>
+        <CategoriesProvider>
+          <PaymentMethodsProvider>{children}</PaymentMethodsProvider>
+        </CategoriesProvider>
+      </TransactionsProvider>
+    </AppProvider>
   );
 }
 
@@ -278,7 +352,9 @@ export default function App() {
           path="/*"
           element={
             <ProtectedRoute>
-              <AppShell />
+              <PrivateAppProviders>
+                <AppShell />
+              </PrivateAppProviders>
             </ProtectedRoute>
           }
         />

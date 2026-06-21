@@ -5,15 +5,17 @@ import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 export default function ConfirmModal({
   show,
   title = "Estas seguro?",
-  message = "Esta acción no se puede deshacer.",
+  message = "Esta accion no se puede deshacer.",
   confirmText = "Confirmar",
   cancelText = "Cancelar",
-  type = "warning", // "warning" | "success" | "info"
+  type = "warning",
   onConfirm,
   onCancel,
 }) {
   const [visible, setVisible] = useState(false);
   const modalRef = useRef(null);
+  const titleId = "confirm-modal-title";
+  const descriptionId = "confirm-modal-description";
 
   const handleConfirm = useCallback(() => {
     setVisible(false);
@@ -71,7 +73,7 @@ export default function ConfirmModal({
       Icon: Info,
       color: "text-[#0a2b6e]",
       iconBg: "bg-[#e9f2ff]",
-      button: "bg-[#0a2b6e] hover:bg-[#081f52]",
+      button: "bg-gradient-to-r from-[#1f67ff] to-[#11c69a]",
     },
   };
 
@@ -91,6 +93,10 @@ export default function ConfirmModal({
         >
           <motion.div
             ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
             initial={{ y: 28, scale: 0.98, opacity: 0 }}
             animate={{
               y: visible ? 0 : 18,
@@ -106,8 +112,12 @@ export default function ConfirmModal({
               <span className={`mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[1.35rem] ${iconBg} ${color}`}>
                 <Icon size={30} />
               </span>
-              <h3 className="mb-2 text-xl font-bold text-[#06142e]">{title}</h3>
-              <p className="mb-6 max-w-sm text-sm leading-6 text-slate-600">{message}</p>
+              <h3 id={titleId} className="mb-2 text-xl font-bold text-[#06142e]">
+                {title}
+              </h3>
+              <p id={descriptionId} className="mb-6 max-w-sm text-sm leading-6 text-slate-600">
+                {message}
+              </p>
 
               <div className="flex w-full flex-col-reverse justify-center gap-2 sm:flex-row sm:gap-3">
                 <button

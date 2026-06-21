@@ -1,4 +1,4 @@
-export const APP_TIME_ZONE = "America/Lima";
+const APP_TIME_ZONE = "America/Lima";
 
 const MONTH_KEY_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: APP_TIME_ZONE,

@@ -1,13 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Edit2, Search, Trash2, X } from "lucide-react";
 import ConfirmModal from "../components/ConfirmModal";
 import AddTransactionModal from "../components/AddTransactionModal";
 import { useTransactions } from "../context/TransactionsContext";
+import { usePaginatedTransactions } from "../hooks/usePaginatedTransactions";
 import CategoryIcon from "../components/CategoryIcon";
+import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
-import PageHeader from "../components/ui/PageHeader";
+import PageHero from "../components/ui/PageHero";
 import SectionPanel from "../components/ui/SectionPanel";
 import {
   calculateTransactionTotals,
@@ -36,11 +38,33 @@ export default function Transactions() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const isUsingRemoteFeed =
+    typeFilter === "all" &&
+    !startDate &&
+    !endDate &&
+    methodFilter === "all" &&
+    categoryFilter === "all" &&
+    !deferredSearchQuery.trim() &&
+    sortBy === "newest";
+
+  const {
+    paginatedTransactions,
+    paginatedTransactionsError,
+    paginatedTransactionsLoading,
+    loadingMorePaginatedTransactions,
+    hasMorePaginatedTransactions,
+    loadMorePaginatedTransactions,
+  } = usePaginatedTransactions({
+    enabled: isUsingRemoteFeed,
+    refreshKey: transactions.length,
+  });
 
   const sortLabel = SORT_OPTIONS.find((option) => option.value === sortBy)?.label || "Más reciente";
 
@@ -75,13 +99,25 @@ export default function Transactions() {
       typeFilter,
       methodFilter,
       categoryFilter,
-      searchQuery,
+      searchQuery: deferredSearchQuery,
     });
-  }, [transactions, startDate, endDate, typeFilter, methodFilter, categoryFilter, searchQuery]);
+  }, [
+    transactions,
+    startDate,
+    endDate,
+    typeFilter,
+    methodFilter,
+    categoryFilter,
+    deferredSearchQuery,
+  ]);
 
   const sortedTransactions = useMemo(() => {
+    if (isUsingRemoteFeed) {
+      return paginatedTransactions;
+    }
+
     return sortTransactions(filteredTransactions, sortBy);
-  }, [filteredTransactions, sortBy]);
+  }, [filteredTransactions, isUsingRemoteFeed, paginatedTransactions, sortBy]);
 
   const totals = useMemo(
     () => calculateTransactionTotals(filteredTransactions),
@@ -89,10 +125,12 @@ export default function Transactions() {
   );
 
   const totalPages = Math.max(1, Math.ceil(sortedTransactions.length / ITEMS_PER_PAGE));
-  const currentTransactions = sortedTransactions.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const currentTransactions = isUsingRemoteFeed
+    ? sortedTransactions
+    : sortedTransactions.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+      );
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -123,10 +161,15 @@ export default function Transactions() {
   }, [searchQuery, typeFilter, categoryFilter, methodFilter, startDate, endDate, sortBy, sortLabel]);
 
   useEffect(() => {
+    if (isUsingRemoteFeed) {
+      setCurrentPage(1);
+      return;
+    }
+
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
-  }, [currentPage, totalPages]);
+  }, [currentPage, isUsingRemoteFeed, totalPages]);
 
   useEffect(() => {
     const categoryFromUrl = searchParams.get("category");
@@ -182,16 +225,49 @@ export default function Transactions() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
-      <PageHeader
+      <PageHero
+        eyebrow="Operaciones"
         title="Transacciones"
-        description="Consulta, filtra y ajusta tus movimientos financieros."
+        description="Consulta, filtra y ajusta tus movimientos con una vista mas clara de entradas, salidas y balance."
+        stats={[
+          {
+            label: "Movimientos",
+            value: `${filteredTransactions.length}`,
+          },
+          {
+            label: "Ingresos",
+            value: formatCurrency(totals.ingresos),
+            tone: "success",
+          },
+          {
+            label: "Gastos",
+            value: formatCurrency(totals.gastos),
+            tone: "danger",
+          },
+          {
+            label: "Balance",
+            value: formatCurrency(totals.balance),
+            tone: totals.balance >= 0 ? "success" : "danger",
+          },
+        ]}
+        actions={
+          activeFilterChips.length > 0 ? (
+            <Button
+              type="button"
+              onClick={resetFilters}
+              variant="soft"
+            >
+              Limpiar filtros
+            </Button>
+          ) : null
+        }
       />
 
       <SectionPanel className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
         <div className="xl:col-span-2">
-          <label className="block text-sm mb-1">Buscar</label>
+          <label className="mb-1 block text-sm font-medium text-slate-500">Buscar</label>
           <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
@@ -200,20 +276,20 @@ export default function Transactions() {
                 setCurrentPage(1);
               }}
               placeholder="Categoría, método, nota o monto"
-              className="border rounded-lg p-2 pl-9 w-full"
+              className="w-full rounded-xl border border-[#dbe8ff] bg-white p-2 pl-9 text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Tipo</label>
+          <label className="mb-1 block text-sm font-medium text-slate-500">Tipo</label>
           <select
             value={typeFilter}
             onChange={(e) => {
               setTypeFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded-lg p-2 w-full"
+            className="w-full rounded-xl border border-[#dbe8ff] bg-white p-2 text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           >
             <option value="all">Todos</option>
             <option value="income">Ingresos</option>
@@ -222,14 +298,14 @@ export default function Transactions() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Orden</label>
+          <label className="mb-1 block text-sm font-medium text-slate-500">Orden</label>
           <select
             value={sortBy}
             onChange={(e) => {
               setSortBy(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded-lg p-2 w-full"
+            className="w-full rounded-xl border border-[#dbe8ff] bg-white p-2 text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -240,14 +316,14 @@ export default function Transactions() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Categoría</label>
+          <label className="mb-1 block text-sm font-medium text-slate-500">Categoría</label>
           <select
             value={categoryFilter}
             onChange={(e) => {
               setCategoryFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded-lg p-2 w-full"
+            className="w-full rounded-xl border border-[#dbe8ff] bg-white p-2 text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           >
             {categories.map((category) => (
               <option key={category} value={category}>
@@ -258,14 +334,14 @@ export default function Transactions() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Método</label>
+          <label className="mb-1 block text-sm font-medium text-slate-500">Método</label>
           <select
             value={methodFilter}
             onChange={(e) => {
               setMethodFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded-lg p-2 w-full"
+            className="w-full rounded-xl border border-[#dbe8ff] bg-white p-2 text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           >
             {methods.map((method) => (
               <option key={method} value={method}>
@@ -276,7 +352,7 @@ export default function Transactions() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Desde</label>
+          <label className="mb-1 block text-sm font-medium text-slate-500">Desde</label>
           <input
             type="date"
             value={startDate}
@@ -284,12 +360,12 @@ export default function Transactions() {
               setStartDate(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded-lg p-2 w-full"
+            className="w-full rounded-xl border border-[#dbe8ff] bg-white p-2 text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Hasta</label>
+          <label className="mb-1 block text-sm font-medium text-slate-500">Hasta</label>
           <input
             type="date"
             value={endDate}
@@ -297,23 +373,24 @@ export default function Transactions() {
               setEndDate(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded-lg p-2 w-full"
+            className="w-full rounded-xl border border-[#dbe8ff] bg-white p-2 text-[#061a3d] shadow-sm outline-none transition focus:border-[#1f67ff] focus:ring-4 focus:ring-[#1f67ff]/10"
           />
         </div>
 
-        <button
+        <Button
           type="button"
           onClick={resetFilters}
-          className="xl:ml-auto bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium"
+          variant="soft"
+          className="xl:ml-auto"
         >
           Limpiar filtros
-        </button>
+        </Button>
       </SectionPanel>
 
       {activeFilterChips.length > 0 && (
         <SectionPanel>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm text-gray-500 mr-1">Filtros activos:</p>
+            <p className="mr-1 text-sm text-slate-500">Filtros activos:</p>
             {activeFilterChips.map((chip) => (
               <button
                 key={chip.key}
@@ -341,7 +418,7 @@ export default function Transactions() {
         <div>
           <p className="text-green-600 font-semibold">Ingresos: {formatCurrency(totals.ingresos)}</p>
           <p className="text-red-600 font-semibold">Gastos: {formatCurrency(totals.gastos)}</p>
-          <p className="text-xs text-gray-500 mt-1">Movimientos: {filteredTransactions.length}</p>
+          <p className="mt-1 text-xs text-slate-500">Movimientos: {filteredTransactions.length}</p>
         </div>
         <h2
           className={`text-2xl font-bold ${
@@ -353,8 +430,11 @@ export default function Transactions() {
       </SectionPanel>
 
       <SectionPanel title="Historial">
+        {isUsingRemoteFeed && paginatedTransactionsError ? (
+          <p className="mb-4 text-sm font-medium text-red-600">{paginatedTransactionsError}</p>
+        ) : null}
         <AnimatePresence>
-          {currentTransactions.length === 0 ? (
+          {currentTransactions.length === 0 && !paginatedTransactionsLoading ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <EmptyState
                 title={
@@ -369,16 +449,20 @@ export default function Transactions() {
                 }
                 action={
                   activeFilterChips.length > 0 ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={resetFilters}
-                      className="rounded-xl bg-[#0a2b6e] px-4 py-2 text-sm font-semibold text-white hover:bg-[#081f52]"
+                      variant="brand"
                     >
                       Limpiar filtros
-                    </button>
+                    </Button>
                   ) : null
                 }
               />
+            </motion.div>
+          ) : paginatedTransactionsLoading ? (
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <p className="py-10 text-center text-sm text-gray-500">Cargando historial reciente...</p>
             </motion.div>
           ) : (
             <motion.ul
@@ -441,7 +525,7 @@ export default function Transactions() {
           )}
         </AnimatePresence>
 
-        {totalPages > 1 && (
+        {!isUsingRemoteFeed && totalPages > 1 && (
           <div className="flex justify-center mt-6 gap-2">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
@@ -462,7 +546,7 @@ export default function Transactions() {
                 className={`px-3 py-1 rounded-lg text-sm font-medium ${
                   currentPage === index + 1
                     ? "bg-[#0a2b6e] text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    : "bg-[#eff8ff] text-[#0a2b6e] hover:bg-[#e3f2ff]"
                 }`}
               >
                 {index + 1}
@@ -482,6 +566,19 @@ export default function Transactions() {
             </button>
           </div>
         )}
+
+        {isUsingRemoteFeed && hasMorePaginatedTransactions ? (
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              onClick={loadMorePaginatedTransactions}
+              disabled={loadingMorePaginatedTransactions}
+              variant="soft"
+            >
+              {loadingMorePaginatedTransactions ? "Cargando mas movimientos..." : "Cargar mas"}
+            </Button>
+          </div>
+        ) : null}
       </SectionPanel>
 
       <ConfirmModal

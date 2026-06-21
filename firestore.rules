@@ -33,7 +33,13 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
           'uid',
           'email',
+          'alias',
           'displayName',
+          'photoURL',
+          'firstName',
+          'lastName',
+          'phone',
+          'address',
           'currency',
           'onboardingCompleted',
           'createdAt',
@@ -41,7 +47,13 @@ service cloud.firestore {
         ]) &&
         request.resource.data.uid == request.auth.uid &&
         nonEmptyString(request.resource.data.email, 160) &&
+        optionalString(request.resource.data.alias, 80) &&
         optionalString(request.resource.data.displayName, 80) &&
+        optionalString(request.resource.data.photoURL, 500) &&
+        optionalString(request.resource.data.firstName, 80) &&
+        optionalString(request.resource.data.lastName, 80) &&
+        optionalString(request.resource.data.phone, 40) &&
+        optionalString(request.resource.data.address, 200) &&
         optionalString(request.resource.data.currency, 8) &&
         (
           !('onboardingCompleted' in request.resource.data) ||
